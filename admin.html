@@ -133,9 +133,12 @@
         const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
         const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
         
-        let supabase = null;
+        let supabaseClient = null;
         try {
-            if (window.supabase) supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            if (window.supabase) {
+                // PENTING: Mencegah error "supabase has already been declared" yang terlihat di screenshot
+                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            }
         } catch(e) {
             console.error("Gagal init supabase admin");
         }
@@ -205,11 +208,11 @@
 
         async function fetchAdminData() {
             try {
-                if(!supabase) throw new Error("No DB");
-                const { data: orders, error: errOrder } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
+                if(!supabaseClient) throw new Error("No DB");
+                const { data: orders, error: errOrder } = await supabaseClient.from('orders').select('*').order('waktu_order', { ascending: true });
                 if (errOrder) throw errOrder;
                 
-                const { data: creds, error: credError } = await supabase.from('credentials').select('*');
+                const { data: creds, error: credError } = await supabaseClient.from('credentials').select('*');
                 
                 jokiList = orders || [];
                 credentialsDB = creds || [];
@@ -271,16 +274,14 @@
                 
                 actionButtons += `<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderPermanen(${joki.id})" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Database</button></div>`;
 
-                let rowHtml = `
-                    <tr class="border-b border-gray-800 hover:bg-gray-900">
-                        <td class="p-3 align-top text-center text-gray-500 font-mono">${joki.id}</td>
-                        <td class="p-3 align-top leading-tight">${customerInfo}</td>
-                        <td class="p-3 align-top leading-tight">${paketInfo}</td>
-                        <td class="p-3 align-top leading-tight">${credentialContent}</td>
-                        <td class="p-3 align-top text-center">${statusBadge}</td>
-                        <td class="p-3 align-top text-center">${actionButtons}</td>
-                    </tr>
-                `;
+                let rowHtml = '<tr class="border-b border-gray-800 hover:bg-gray-900">';
+                rowHtml += '<td class="p-3 align-top text-center text-gray-500 font-mono">' + joki.id + '</td>';
+                rowHtml += '<td class="p-3 align-top leading-tight">' + customerInfo + '</td>';
+                rowHtml += '<td class="p-3 align-top leading-tight">' + paketInfo + '</td>';
+                rowHtml += '<td class="p-3 align-top leading-tight">' + credentialContent + '</td>';
+                rowHtml += '<td class="p-3 align-top text-center">' + statusBadge + '</td>';
+                rowHtml += '<td class="p-3 align-top text-center">' + actionButtons + '</td>';
+                rowHtml += '</tr>';
                 tbody.innerHTML += rowHtml;
             });
 
@@ -288,7 +289,7 @@
         }
 
         async function updateStatus(id, newStatus) {
-            await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+            await supabaseClient.from('orders').update({ status: newStatus }).eq('id', id);
             fetchAdminData();
         }
 
@@ -297,7 +298,7 @@
                 const now = new Date();
                 const selesai = new Date(now.getTime() + (lamaJam * 60 * 60 * 1000));
                 
-                await supabase.from('orders').update({ 
+                await supabaseClient.from('orders').update({ 
                     status: 'joki_berjalan',
                     waktu_mulai: now.toISOString(),
                     waktu_selesai: selesai.toISOString()
@@ -309,15 +310,15 @@
 
         async function selesaikanDanWipe(id) {
             if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen dari Cloud (Auto-Wipe).")) {
-                await supabase.from('orders').update({ status: 'selesai' }).eq('id', id);
-                await supabase.from('credentials').delete().eq('order_id', id);
+                await supabaseClient.from('orders').update({ status: 'selesai' }).eq('id', id);
+                await supabaseClient.from('credentials').delete().eq('order_id', id);
                 fetchAdminData();
             }
         }
 
         async function hapusOrderPermanen(id) {
             if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database.")) {
-                await supabase.from('orders').delete().eq('id', id);
+                await supabaseClient.from('orders').delete().eq('id', id);
                 fetchAdminData();
             }
         }
@@ -327,7 +328,7 @@
                 const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
                 const ids = targetOrders.map(j => j.id);
                 if(ids.length > 0) {
-                    await supabase.from('orders').update({ coupon_claimed: true }).in('id', ids);
+                    await supabaseClient.from('orders').update({ coupon_claimed: true }).in('id', ids);
                     fetchAdminData();
                 }
             }
@@ -338,8 +339,8 @@
         // ==========================================
         async function fetchPackages() {
             try {
-                if(!supabase) throw new Error("No DB");
-                const { data, error } = await supabase.from('packages').select('*').order('id', { ascending: true });
+                if(!supabaseClient) throw new Error("No DB");
+                const { data, error } = await supabaseClient.from('packages').select('*').order('id', { ascending: true });
                 if (error || !data || data.length === 0) throw error;
                 packagesDB = data;
             } catch (err) {
@@ -358,19 +359,16 @@
             }
 
             packagesDB.forEach(p => {
-                let rowHtml = `
-                    <tr class="border-b border-gray-800 hover:bg-gray-900">
-                        <td class="p-3 font-bold text-gray-300">${p.kategori}</td>
-                        <td class="p-3 text-blue-300 font-semibold">${p.nama}</td>
-                        <td class="p-3 font-bold text-yellow-400">${p.harga_wibu} Wibu</td>
-                        <td class="p-3">Rp ${p.harga_rp.toLocaleString('id-ID')}</td>
-                        <td class="p-3">${p.jam_total} Jam</td>
-                        <td class="p-3 text-center">
-                            <button onclick="editPkg(${p.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️</button>
-                            <button onclick="hapusPkg(${p.id})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                let rowHtml = '<tr class="border-b border-gray-800 hover:bg-gray-900">';
+                rowHtml += '<td class="p-3 font-bold text-gray-300">' + p.kategori + '</td>';
+                rowHtml += '<td class="p-3 text-blue-300 font-semibold">' + p.nama + '</td>';
+                rowHtml += '<td class="p-3 font-bold text-yellow-400">' + p.harga_wibu + ' Wibu</td>';
+                rowHtml += '<td class="p-3">Rp ' + p.harga_rp.toLocaleString('id-ID') + '</td>';
+                rowHtml += '<td class="p-3">' + p.jam_total + ' Jam</td>';
+                rowHtml += '<td class="p-3 text-center">';
+                rowHtml += '<button onclick="editPkg(' + p.id + ')" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️</button>';
+                rowHtml += '<button onclick="hapusPkg(' + p.id + ')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">🗑️</button>';
+                rowHtml += '</td></tr>';
                 tbody.innerHTML += rowHtml;
             });
         }
@@ -389,9 +387,9 @@
             if(!newPkg.kategori || !newPkg.nama) return alert("Kategori dan Nama wajib diisi!");
 
             if (idInput) {
-                await supabase.from('packages').update(newPkg).eq('id', idInput);
+                await supabaseClient.from('packages').update(newPkg).eq('id', idInput);
             } else {
-                await supabase.from('packages').insert([newPkg]);
+                await supabaseClient.from('packages').insert([newPkg]);
             }
 
             resetPkgForm();
@@ -413,7 +411,7 @@
 
         async function hapusPkg(id) {
             if(confirm("Yakin hapus paket joki ini dari Cloud Database?")) {
-                await supabase.from('packages').delete().eq('id', id);
+                await supabaseClient.from('packages').delete().eq('id', id);
                 fetchPackages();
             }
         }
