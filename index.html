@@ -257,6 +257,28 @@
         
         document.getElementById('public-order-form').addEventListener('submit', function(e) {
             e.preventDefault();
+
+            // =======================================================
+            // 🛡️ SISTEM ANTI-SPAM BOT (Max 5 pesanan per 1 menit)
+            // =======================================================
+            const MAX_ORDERS = 5;
+            const TIME_WINDOW = 60000; // 60.000 milidetik = 1 menit
+            
+            let orderHistory = JSON.parse(localStorage.getItem('sae_order_history')) || [];
+            const now = new Date().getTime();
+            
+            // Saring riwayat, hanya simpan yang terjadi dalam 1 menit terakhir
+            orderHistory = orderHistory.filter(time => now - time < TIME_WINDOW);
+            
+            if (orderHistory.length >= MAX_ORDERS) {
+                alert("🚨 SISTEM ANTI-SPAM AKTIF!\nAnda terdeteksi mengirim pesanan terlalu cepat. Silakan tunggu 1 menit sebelum memesan lagi.");
+                return; // Hentikan eksekusi, form gagal terkirim
+            }
+            
+            // Catat waktu pesanan baru ini ke memori browser
+            orderHistory.push(now);
+            localStorage.setItem('sae_order_history', JSON.stringify(orderHistory));
+            // =======================================================
             
             // XSS Filter untuk Input Data
             const nama = sanitizeHTML(document.getElementById('joki-nama').value.trim());
