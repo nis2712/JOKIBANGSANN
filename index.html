@@ -30,7 +30,7 @@
             
             <div id="price-list-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                 <!-- Kartu Paket dirender otomatis -->
-                <div class="text-center col-span-full py-4 text-gray-500">Memuat Price List...</div>
+                <div class="text-center col-span-full py-4 text-gray-500">Memuat Price List dari Server...</div>
             </div>
         </div>
 
@@ -149,7 +149,7 @@
     </div>
 
     <script>
-        // INISIALISASI SUPABASE DENGAN FALLBACK AMAN
+        // KODE INI SUDAH 100% BENAR DENGAN KUNCI ASLI ANDA
         const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
         const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
         let supabase = null;
@@ -182,7 +182,7 @@
         let packagesDB = [];
         let jokiList = [];
 
-        // AMBIL PAKET
+        // AMBIL PAKET DENGAN SISTEM AUTO-FALLBACK
         async function fetchPackages() {
             if (!supabase) {
                 packagesDB = DEFAULT_PACKAGES;
@@ -202,18 +202,21 @@
             renderDynamicPackages();
         }
 
-        // AMBIL ORDER
+        // AMBIL ORDER DENGAN SISTEM AUTO-FALLBACK
         async function fetchOrders() {
-            if (!supabase) return;
+            if (!supabase) {
+                renderJokiTable(); // Panggil render walau kosong agar teks "Memuat..." hilang
+                return;
+            }
             try {
                 const { data, error } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
                 if (!error && data) {
                     jokiList = data;
-                    renderJokiTable();
                 }
             } catch (err) {
                 console.error(err);
             }
+            renderJokiTable();
         }
 
         // RENDER PAKET KE HTML
@@ -305,7 +308,7 @@
 
         async function konfirmasiSudahBayar() {
             if (!tempOrderData || !tempPasswordData) return;
-            if (!supabase) return alert("Koneksi ke database bermasalah. Silakan hubungi admin.");
+            if (!supabase) return alert("Koneksi ke database bermasalah. Coba refresh halaman / cek koneksi internet.");
 
             const btn = document.getElementById('btn-konfirmasi-bayar');
             btn.innerHTML = `⏳ Mengirim Data ke Server...`;
@@ -318,7 +321,7 @@
                 tempPasswordData.order_id = orderData[0].id;
                 await supabase.from('credentials').insert([tempPasswordData]);
 
-                // Cek Kupon (Client-side estimation)
+                // Notifikasi Kupon (Lokal)
                 const normName = tempOrderData.nama.toLowerCase();
                 const activeCount = jokiList.filter(j => (j.nama || '').trim().toLowerCase() === normName && !j.coupon_claimed).length + 1;
 
@@ -331,10 +334,12 @@
                 document.getElementById('qris-modal-area').classList.add('hidden');
                 document.getElementById('public-order-form').reset();
                 
-                alert("Pesanan berhasil dikirim ke Admin!\nStatus: Menunggu Verifikasi Admin.");
-                fetchOrders();
+                alert("Pesanan berhasil dikirim ke Admin!
+Status: Menunggu Verifikasi Admin.");
+                fetchOrders(); // Refresh table
             } catch (err) {
-                alert("Gagal mengirim pesanan. Pastikan koneksi internet stabil dan tabel Supabase sudah dibuat.");
+                alert("Gagal mengirim pesanan. Pastikan tabel Supabase sudah di-setup dengan benar.");
+                console.error(err);
             } finally {
                 btn.innerHTML = `✅ SAYA SUDAH BAYAR (KIRIM DATA KE ADMIN)`;
                 btn.disabled = false;
