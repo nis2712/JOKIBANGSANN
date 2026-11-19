@@ -25,52 +25,148 @@
     <!-- KONTEN UTAMA ADMIN -->
     <div id="admin-content" class="max-w-7xl mx-auto hidden">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 bg-gray-900 p-4 rounded-xl border border-gray-800 gap-4">
-            <h1 class="text-xl font-black text-red-400">🔒 ADMIN PANEL: KONTROL ORDER & KREDENSIAL</h1>
+            <h1 class="text-xl font-black text-red-400">🔒 ADMIN PANEL: JOKI SAE BANGSANN</h1>
             <div>
                 <button onclick="adminLogout()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold transition">🔒 Kunci Sesi (Logout)</button>
             </div>
         </div>
 
-        <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-6 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
-            <div>
-                <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Panduan Alur Proses Joki</h3>
-                <ul class="text-xs text-gray-300 space-y-1 list-disc pl-4">
-                    <li><b>Pending Pembayaran:</b> Cek mutasi DANA Anda. Jika dana sesuai nominal masuk, klik <b class="text-green-400">Lunas & Cek Akun</b>. Jika order palsu, klik <b class="text-red-400">Hapus Order</b>.</li>
-                    <li><b>Lunas & Cek Akun:</b> Anda login ke akun Roblox pelanggan. Waktu Joki belum berjalan.</li>
-                    <li><b>Joki Berjalan:</b> Saat Anda siap main, klik <b class="text-blue-400">Mulai Joki (Start Timer)</b>. Jam mulai dihitung dari sekarang.</li>
-                    <li><b>Selesai (Auto-Wipe):</b> Saat joki tamat, klik <b class="text-gray-400">Selesai & Wipe Pass</b>. Password pembeli langsung terhapus permanen dari memori demi privasi.</li>
-                </ul>
+        <!-- NAVIGASI TAB ADMIN -->
+        <div class="flex gap-2 mb-6 border-b border-gray-800 pb-3">
+            <button id="tab-btn-orders" onclick="switchAdminTab('orders')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition">📋 Kelola Order & Kredensial</button>
+            <button id="tab-btn-packages" onclick="switchAdminTab('packages')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg font-bold text-sm transition">📦 Edit Daftar Paket (Price List)</button>
+        </div>
+
+        <!-- TAB 1: KELOLA ORDER & KREDENSIAL -->
+        <div id="tab-orders" class="block">
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-4 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
+                <div>
+                    <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Panduan Alur Proses Joki</h3>
+                    <ul class="text-xs text-gray-300 space-y-1 list-disc pl-4">
+                        <li><b>Pending Pembayaran:</b> Cek mutasi DANA Anda. Jika lunas, klik <b class="text-green-400">Lunas & Cek Akun</b>.</li>
+                        <li><b>Lunas & Cek Akun:</b> Anda login ke akun Roblox pelanggan. Waktu Joki belum berjalan.</li>
+                        <li><b>Joki Berjalan:</b> Saat siap main, klik <b class="text-blue-400">Mulai Joki</b>. Jam mulai dihitung.</li>
+                        <li><b>Selesai (Auto-Wipe):</b> Saat tamat, klik <b class="text-gray-400">Selesai & Wipe</b> (Password otomatis terhapus).</li>
+                    </ul>
+                </div>
+                <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
+                    <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas & Selesai)</p>
+                    <p class="text-xl font-black text-green-400" id="total-revenue">Rp 0</p>
+                </div>
             </div>
-            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
-                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas & Selesai)</p>
-                <p class="text-xl font-black text-green-400" id="total-revenue">Rp 0</p>
+
+            <!-- FITUR BATCH DELETE -->
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-sm font-bold text-gray-200">Tabel Antrean Joki</h3>
+                <button onclick="hapusBatchOrder()" class="bg-red-800 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-1">
+                    🗑️ Hapus Data Terpilih (Batch Delete)
+                </button>
+            </div>
+
+            <div class="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl shadow">
+                <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-gray-800 text-gray-300">
+                            <th class="p-3 w-10 text-center"><input type="checkbox" id="cb-all-orders" onclick="toggleAllCbOrders(this)" class="w-4 h-4 cursor-pointer"></th>
+                            <th class="p-3">Data Pelanggan</th>
+                            <th class="p-3">Paket Joki</th>
+                            <th class="p-3 text-red-300">Kredensial Login (Rahasia)</th>
+                            <th class="p-3 text-center">Status Saat Ini</th>
+                            <th class="p-3 text-center">Tindakan Admin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body">
+                        <!-- Data Admin -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl shadow">
-            <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
-                <thead>
-                    <tr class="bg-gray-800 text-gray-300">
-                        <th class="p-3">Data Pelanggan</th>
-                        <th class="p-3">Paket Joki</th>
-                        <th class="p-3 text-red-300">Kredensial Login (Rahasia)</th>
-                        <th class="p-3 text-center">Status Saat Ini</th>
-                        <th class="p-3 text-center">Tindakan Admin</th>
-                    </tr>
-                </thead>
-                <tbody id="admin-table-body">
-                    <!-- Data Admin -->
-                </tbody>
-            </table>
+        <!-- TAB 2: MANAJEMEN PAKET (PRICE LIST) -->
+        <div id="tab-packages" class="hidden">
+            <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-6 shadow">
+                <h3 class="text-sm font-bold text-yellow-400 mb-2">📦 Tambah / Edit Paket Joki Baru</h3>
+                <p class="text-xs text-gray-400 mb-4">Perubahan di sini akan langsung memperbarui Banner Price List dan Form Pilihan Paket di halaman publik pelanggan.</p>
+                
+                <form id="pkg-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                    <input type="hidden" id="pkg-id">
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Kategori (Grup)</label>
+                        <input type="text" id="pkg-kategori" placeholder="Cth: Alien Event" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Nama Paket & Bonus</label>
+                        <input type="text" id="pkg-nama" placeholder="Cth: 8 Jam (+2j Bonus)" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Teks Harga (Banner)</label>
+                        <input type="text" id="pkg-wibu" placeholder="Cth: 60" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Harga Asli (Rp)</label>
+                        <input type="number" id="pkg-rp" placeholder="Cth: 60000" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-[10px] text-gray-400 uppercase">Total Waktu (Jam)</label>
+                        <input type="number" id="pkg-jam" placeholder="Cth: 10" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
+                    </div>
+                    <div class="md:col-span-5 flex justify-end gap-2 mt-2">
+                        <button type="button" onclick="resetPkgForm()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold transition">Batal</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded text-xs font-bold transition shadow">💾 Simpan Paket</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl shadow">
+                <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-gray-800 text-gray-300">
+                            <th class="p-3">Kategori Grup</th>
+                            <th class="p-3">Nama Paket (Tampil)</th>
+                            <th class="p-3">Harga Wibu</th>
+                            <th class="p-3">Harga Asli (Rp)</th>
+                            <th class="p-3">Total Jam Joki</th>
+                            <th class="p-3 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pkg-table-body">
+                        <!-- Data Paket -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
         const PIN_ADMIN = "INSANSUKABUMI2003"; // Ganti PIN Anda di sini
+        const TARGET_KUPON = 5;
         let jokiList = JSON.parse(localStorage.getItem('sae_joki_online_db')) || [];
+        let packagesDB = JSON.parse(localStorage.getItem('sae_packages_db')) || [];
+
+        // Load Default Packages jika kosong
+        if (packagesDB.length === 0) {
+            packagesDB = [
+                { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', hargaWibu: '25', hargaRp: 25000, jamTotal: 8 },
+                { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', hargaWibu: '50', hargaRp: 50000, jamTotal: 19 },
+                { id: 103, kategori: 'Alien Event', nama: '4 Jam', hargaWibu: '30', hargaRp: 30000, jamTotal: 4 },
+                { id: 104, kategori: 'Alien Event', nama: '8 Jam (Bonus 2j)', hargaWibu: '60', hargaRp: 60000, jamTotal: 10 },
+                { id: 105, kategori: 'Alien Event', nama: '24 Jam (Bonus 3j)', hargaWibu: '130', hargaRp: 130000, jamTotal: 27 },
+                { id: 106, kategori: 'Ambil Telur', nama: '4 Jam', hargaWibu: '20', hargaRp: 20000, jamTotal: 4 },
+                { id: 107, kategori: 'Ambil Telur', nama: '10 Jam (Bonus 2j)', hargaWibu: '50', hargaRp: 50000, jamTotal: 12 },
+                { id: 108, kategori: 'Ambil Telur', nama: '20 Jam (Bonus 5j)', hargaWibu: '100', hargaRp: 100000, jamTotal: 25 },
+                { id: 109, kategori: 'Telur + Traidmil', nama: '4 Jam', hargaWibu: '25', hargaRp: 25000, jamTotal: 4 },
+                { id: 110, kategori: 'Telur + Traidmil', nama: '8 Jam (Bonus 2j)', hargaWibu: '50', hargaRp: 50000, jamTotal: 10 },
+                { id: 111, kategori: 'Telur + Traidmil', nama: '16 Jam (Bonus 3j)', hargaWibu: '100', hargaRp: 100000, jamTotal: 19 }
+            ];
+            localStorage.setItem('sae_packages_db', JSON.stringify(packagesDB));
+        }
 
         function saveToLocalStorage() {
             localStorage.setItem('sae_joki_online_db', JSON.stringify(jokiList));
+        }
+
+        function savePackagesDB() {
+            localStorage.setItem('sae_packages_db', JSON.stringify(packagesDB));
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -79,6 +175,7 @@
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');
                 renderAdminTable();
+                renderPackagesTable();
             }
         });
 
@@ -90,6 +187,7 @@
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');
                 renderAdminTable();
+                renderPackagesTable();
             } else {
                 alert("PIN Admin Salah!");
                 document.getElementById('admin-pin-input').value = '';
@@ -103,6 +201,53 @@
             document.getElementById('admin-pin-input').value = '';
         }
 
+        function switchAdminTab(tabName) {
+            document.getElementById('tab-orders').classList.add('hidden');
+            document.getElementById('tab-packages').classList.add('hidden');
+            
+            document.getElementById('tab-btn-orders').className = "bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg font-bold text-sm transition";
+            document.getElementById('tab-btn-packages').className = "bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg font-bold text-sm transition";
+
+            if(tabName === 'orders') {
+                document.getElementById('tab-orders').classList.remove('hidden');
+                document.getElementById('tab-btn-orders').className = "bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition";
+            } else {
+                document.getElementById('tab-packages').classList.remove('hidden');
+                document.getElementById('tab-btn-packages').className = "bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition";
+            }
+        }
+
+        // ==============================================
+        // 1. MANAJEMEN ORDER & KREDENSIAL (TAB 1)
+        // ==============================================
+        function toggleAllCbOrders(source) {
+            const checkboxes = document.querySelectorAll('.cb-order-item');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
+        function hapusBatchOrder() {
+            const checkedBoxes = document.querySelectorAll('.cb-order-item:checked');
+            if (checkedBoxes.length === 0) return alert("Pilih minimal 1 order untuk dihapus!");
+            
+            if (confirm(`YAKIN MENGHAPUS ${checkedBoxes.length} ORDER TERPILIH SECARA PERMANEN?
+
+Tindakan ini untuk pembersihan data dan tidak dapat dibatalkan.`)) {
+                const idsToDelete = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+                jokiList = jokiList.filter(j => !idsToDelete.includes(j.id));
+                saveToLocalStorage();
+                renderAdminTable();
+                document.getElementById('cb-all-orders').checked = false;
+            }
+        }
+
+        function hapusOrderManual(id) {
+            if (confirm("Hapus order ini secara permanen? Data akan dibersihkan dari sistem.")) {
+                jokiList = jokiList.filter(j => j.id !== id);
+                saveToLocalStorage();
+                renderAdminTable();
+            }
+        }
+
         function renderAdminTable() {
             const tbody = document.getElementById('admin-table-body');
             if (!tbody) return;
@@ -111,24 +256,20 @@
             let totalRevenue = 0;
 
             if (jokiList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500 italic">Belum ada order joki masuk.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Belum ada order joki masuk.</td></tr>`;
                 document.getElementById('total-revenue').innerText = "Rp 0";
                 return;
             }
 
             jokiList.forEach((joki) => {
-                // Hitung pendapatan hanya dari yang sudah Lunas, Berjalan, atau Selesai
-                if (joki.status !== 'pending_pembayaran') {
-                    totalRevenue += joki.harga || 0;
-                }
-
+                if (joki.status !== 'pending_pembayaran') totalRevenue += joki.harga || 0;
+                
                 const options = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
                 const dateOrder = new Date(joki.waktuOrder).toLocaleDateString('id-ID', options);
                 
-                // Cek kupon
                 let kuponButton = '';
                 const activeCoupon = jokiList.filter(j => j.nama.toLowerCase() === joki.nama.toLowerCase() && !j.couponClaimed).length;
-                if (!joki.couponClaimed && activeCoupon >= 5) {
+                if (!joki.couponClaimed && activeCoupon >= TARGET_KUPON) {
                     kuponButton = `<br><button onclick="confirmUseCoupon('${joki.id}')" class="mt-1 bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded text-[10px] shadow">✅ Klaim Bonus (-5 Kupon)</button>`;
                 } else if (joki.couponClaimed) {
                     kuponButton = `<br><span class="text-[10px] text-gray-500">Kupon sudah diklaim</span>`;
@@ -156,29 +297,24 @@
 
                 if (joki.status === 'pending_pembayaran') {
                     statusBadge = `<span class="bg-yellow-900/80 text-yellow-400 border border-yellow-600 px-2 py-1 rounded text-xs font-bold">🕒 Pending Bayar</span>`;
-                    actionButtons = `
-                        <button onclick="updateStatus(${joki.id}, 'lunas_cek_akun')" class="w-full mb-1 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">✅ Konfirmasi Lunas & Cek Akun</button>
-                        <button onclick="hapusOrder(${joki.id})" class="w-full bg-red-800 hover:bg-red-700 text-white px-3 py-1 rounded shadow text-[10px]">🗑️ Hapus (Order Fiktif)</button>
-                    `;
+                    actionButtons = `<button onclick="updateStatus(${joki.id}, 'lunas_cek_akun')" class="w-full bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">✅ Set Lunas & Cek Akun</button>`;
                 } else if (joki.status === 'lunas_cek_akun') {
                     statusBadge = `<span class="bg-blue-900/80 text-blue-300 border border-blue-500 px-2 py-1 rounded text-xs font-bold">🔍 Lunas (Sedang Cek Akun)</span>`;
-                    actionButtons = `
-                        <button onclick="mulaiJokiTimer(${joki.id})" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded font-bold shadow text-[11px]">🚀 Mulai Joki (Start Timer Countdown)</button>
-                    `;
+                    actionButtons = `<button onclick="mulaiJokiTimer(${joki.id})" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🚀 Mulai Joki (Start Timer)</button>`;
                 } else if (joki.status === 'joki_berjalan') {
                     statusBadge = `<span class="bg-green-900/80 text-green-300 border border-green-500 px-2 py-1 rounded text-xs font-bold animate-pulse">🚀 Joki Berjalan</span>`;
-                    actionButtons = `
-                        <button onclick="selesaikanDanWipe(${joki.id})" class="w-full bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded font-bold shadow text-[11px]">🏁 Selesai Joki & Wipe Password</button>
-                    `;
+                    actionButtons = `<button onclick="selesaikanDanWipe(${joki.id})" class="w-full bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🏁 Selesai Joki & Wipe Pass</button>`;
                 } else if (joki.status === 'selesai') {
                     statusBadge = `<span class="bg-gray-800 text-gray-400 border border-gray-600 px-2 py-1 rounded text-xs font-bold">✅ Selesai (Wiped)</span>`;
-                    actionButtons = `
-                        <span class="text-[10px] text-gray-500">Order telah ditutup secara permanen.</span>
-                    `;
+                    actionButtons = `<span class="text-[10px] text-gray-500">Selesai Permanen.</span>`;
                 }
+                
+                // Tambahkan Hapus Manual di semua baris
+                actionButtons += `<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderManual(${joki.id})" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Baris</button></div>`;
 
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-800 hover:bg-gray-900">
+                        <td class="p-3 align-top text-center"><input type="checkbox" value="${joki.id}" class="cb-order-item w-4 h-4 cursor-pointer"></td>
                         <td class="p-3 align-top leading-tight">${customerInfo}</td>
                         <td class="p-3 align-top leading-tight">${paketInfo}</td>
                         <td class="p-3 align-top leading-tight">${credentialContent}</td>
@@ -192,72 +328,127 @@
         }
 
         function updateStatus(id, newStatus) {
-            jokiList = jokiList.map(j => {
-                if (j.id === id) j.status = newStatus;
-                return j;
-            });
-            saveToLocalStorage();
-            renderAdminTable();
-        }
-
-        function hapusOrder(id) {
-            if (confirm("Hapus order ini secara permanen? Gunakan hanya untuk orang yang menekan tombol bayar palsu/fiktif tanpa melakukan transfer.")) {
-                jokiList = jokiList.filter(j => j.id !== id);
-                saveToLocalStorage();
-                renderAdminTable();
-            }
+            jokiList = jokiList.map(j => { if (j.id === id) j.status = newStatus; return j; });
+            saveToLocalStorage(); renderAdminTable();
         }
 
         function mulaiJokiTimer(id) {
-            if (confirm("Anda siap untuk mulai proses Joki sekarang? Timer countdown (jam selesai) akan mulai dihitung dari saat Anda menekan tombol ini.")) {
+            if (confirm("Mulai Joki sekarang? Timer countdown (jam selesai) akan dihitung dari detik ini.")) {
                 jokiList = jokiList.map(j => {
                     if (j.id === id) {
                         j.status = 'joki_berjalan';
                         const now = new Date();
                         j.waktuMulai = now.toISOString();
-                        
-                        // Hitung Waktu Selesai berdasarkan Durasi Paket dari saat ini
                         const totalMenit = j.lamaJam * 60; 
                         now.setMinutes(now.getMinutes() + totalMenit);
                         j.waktuSelesai = now.toISOString();
                     }
                     return j;
                 });
-                saveToLocalStorage();
-                renderAdminTable();
+                saveToLocalStorage(); renderAdminTable();
             }
         }
 
         function selesaikanDanWipe(id) {
-            if (confirm("Tandai order ini selesai? Password akun pelanggan akan dihapus permanen dari memori sistem (Auto-Wipe).")) {
+            if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen (Auto-Wipe).")) {
                 jokiList = jokiList.map(j => {
-                    if (j.id === id) {
-                        j.status = 'selesai';
-                        j.password = '[DIHAPUS OLEH SISTEM AUTO-WIPE]';
-                    }
+                    if (j.id === id) { j.status = 'selesai'; j.password = '[DIHAPUS OLEH SISTEM AUTO-WIPE]'; }
                     return j;
                 });
-                saveToLocalStorage();
-                renderAdminTable();
+                saveToLocalStorage(); renderAdminTable();
             }
         }
 
         function confirmUseCoupon(id) {
             const jokiData = jokiList.find(j => j.id === parseInt(id));
             if(!jokiData) return;
-
             if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${jokiData.nama}"?`)) {
-                let targetCount = 0;
+                let count = 0;
                 jokiList.forEach(j => {
-                    if (j.nama.toLowerCase() === jokiData.nama.toLowerCase() && !j.couponClaimed && targetCount < TARGET_KUPON) {
-                        j.couponClaimed = true;
-                        targetCount++;
+                    if (j.nama.toLowerCase() === jokiData.nama.toLowerCase() && !j.couponClaimed && count < TARGET_KUPON) {
+                        j.couponClaimed = true; count++;
                     }
                 });
-                saveToLocalStorage();
-                renderAdminTable();
+                saveToLocalStorage(); renderAdminTable();
             }
         }
+
+        // ==============================================
+        // 2. MANAJEMEN PAKET PRICE LIST (TAB 2)
+        // ==============================================
+        function renderPackagesTable() {
+            const tbody = document.getElementById('pkg-table-body');
+            tbody.innerHTML = '';
+            
+            packagesDB.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-800 hover:bg-gray-900">
+                        <td class="p-3 font-bold text-gray-300">${p.kategori}</td>
+                        <td class="p-3 text-blue-300 font-semibold">${p.nama}</td>
+                        <td class="p-3 font-bold text-yellow-400">${p.hargaWibu} Wibu</td>
+                        <td class="p-3">Rp ${p.hargaRp.toLocaleString('id-ID')}</td>
+                        <td class="p-3">${p.jamTotal} Jam</td>
+                        <td class="p-3 text-center">
+                            <button onclick="editPkg(${p.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️ Edit</button>
+                            <button onclick="hapusPkg(${p.id})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        document.getElementById('pkg-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const idInput = document.getElementById('pkg-id').value;
+            
+            const newPkg = {
+                id: idInput ? parseInt(idInput) : Date.now(),
+                kategori: document.getElementById('pkg-kategori').value.trim(),
+                nama: document.getElementById('pkg-nama').value.trim(),
+                hargaWibu: document.getElementById('pkg-wibu').value.trim(),
+                hargaRp: parseInt(document.getElementById('pkg-rp').value),
+                jamTotal: parseInt(document.getElementById('pkg-jam').value)
+            };
+
+            if (idInput) {
+                // Update
+                packagesDB = packagesDB.map(p => p.id === parseInt(idInput) ? newPkg : p);
+            } else {
+                // Add new
+                packagesDB.push(newPkg);
+            }
+
+            savePackagesDB();
+            resetPkgForm();
+            renderPackagesTable();
+        });
+
+        function editPkg(id) {
+            const p = packagesDB.find(pkg => pkg.id === id);
+            if(p) {
+                document.getElementById('pkg-id').value = p.id;
+                document.getElementById('pkg-kategori').value = p.kategori;
+                document.getElementById('pkg-nama').value = p.nama;
+                document.getElementById('pkg-wibu').value = p.hargaWibu;
+                document.getElementById('pkg-rp').value = p.hargaRp;
+                document.getElementById('pkg-jam').value = p.jamTotal;
+                window.scrollTo(0,0);
+            }
+        }
+
+        function hapusPkg(id) {
+            if(confirm("Yakin hapus paket joki ini dari Price List publik?")) {
+                packagesDB = packagesDB.filter(p => p.id !== id);
+                savePackagesDB();
+                renderPackagesTable();
+            }
+        }
+
+        function resetPkgForm() {
+            document.getElementById('pkg-id').value = '';
+            document.getElementById('pkg-form').reset();
+        }
+
     </script>
 </body>
 </html>
