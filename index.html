@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Joki Sae Bangsann - Roblox Joki & Price List</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .bonus-badge-glow { background: linear-gradient(90deg, #9333ea, #ec4899, #eab308); box-shadow: 0 0 14px rgba(236, 72, 153, 0.85); }
     </style>
@@ -147,21 +148,21 @@
     </div>
 
     <script>
-        // MENGGUNAKAN API FETCH NATIVE (SANGAT CEPAT DAN ANTI GAGAL)
-        const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
-        const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
+        const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
+        const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
         
-        // Perbaikan Header API: Menggunakan huruf kecil 'apikey' sesuai standar PostgREST Supabase
-        const DB_HEADERS = {
-            "apikey": DB_KEY,
-            "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        };
-        
+        let supabase = null;
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            }
+        } catch (e) {
+            console.error("Supabase error:", e);
+        }
+
         const TARGET_KUPON = 5;
 
-        // KEMBALIKAN SEMUA DEFAULT PACKAGES (LENGKAP)
+        // DEFAULT PAKET LENGKAP JIKA DB KOSONG (ANTI-GAGAL)
         const DEFAULT_PACKAGES = [
             { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
             { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
@@ -179,31 +180,26 @@
         let packagesDB = [];
         let jokiList = [];
 
-        // AMBIL PAKET
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
-                if (!res.ok) throw new Error("Gagal load tabel packages");
-                const data = await res.json();
-                
-                // Jika tabel packages di Supabase ternyata kosong, gunakan bawaan skrip
-                packagesDB = (data && data.length > 0) ? data : DEFAULT_PACKAGES;
+                if(!supabase) throw new Error("No DB");
+                const { data, error } = await supabase.from('packages').select('*').order('id', { ascending: true });
+                if (error || !data || data.length === 0) throw error;
+                packagesDB = data;
             } catch (err) {
-                console.warn("Menggunakan paket default lokal karena belum ada di DB.");
                 packagesDB = DEFAULT_PACKAGES;
             }
             renderDynamicPackages();
         }
 
-        // AMBIL ORDER
         async function fetchOrders() {
             try {
-                const res = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
-                if (!res.ok) throw new Error("Gagal load tabel orders");
-                jokiList = await res.json();
+                if(!supabase) throw new Error("No DB");
+                const { data, error } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
+                if (error) throw error;
+                jokiList = data || [];
             } catch (err) {
-                console.warn("Gagal sinkron order (kemungkinan tabel masih kosong atau RLS memblokir).");
-                jokiList = [];
+                // Jangan hapus jokiList jika error, agar data di layar tetap ada
             }
             renderJokiTable();
         }
@@ -240,14 +236,11 @@
                 optGroup.label = kategori;
                 
                 pkgs.forEach(p => {
-                    // Penyesuaian nama field JSON (jika dari Supabase pakai underscore, jika dari lokal pakai underscore juga karena DEFAULT_PACKAGES sudah disesuaikan)
-                    const p_nama = p.nama || p.paket_teks;
-                    
-                    cardHtml += `<li>• ${p_nama} ➔ <b class="text-yellow-400">${p.harga_wibu} wibu</b></li>`;
+                    cardHtml += `<li>• ${p.nama} ➔ <b class="text-yellow-400">${p.harga_wibu} wibu</b></li>`;
                     
                     const opt = document.createElement('option');
-                    opt.value = `${p.kategori}|${p_nama}|${p.jam_total}|${p.harga_rp}`;
-                    opt.textContent = `${p.kategori} - ${p_nama} (${p.harga_wibu} wibu) [${p.jam_total} Jam]`;
+                    opt.value = `${p.kategori}|${p.nama}|${p.jam_total}|${p.harga_rp}`;
+                    opt.textContent = `${p.kategori} - ${p.nama} (${p.harga_wibu} wibu) [${p.jam_total} Jam]`;
                     optGroup.appendChild(opt);
                 });
                 cardHtml += `</ul></div>`;
@@ -303,40 +296,22 @@
             btn.disabled = true;
 
             try {
-                // 1. Simpan Order (POST)
-                const resOrder = await fetch(DB_URL + "/orders", {
-                    method: "POST",
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(tempOrderData)
-                });
+                if(!supabase) throw new Error("Supabase blm siap");
                 
-                if (!resOrder.ok) {
-                    const errTxt = await resOrder.text();
-                    throw new Error("Gagal order: " + errTxt);
-                }
+                const { data: orderData, error: orderError } = await supabase.from('orders').insert([tempOrderData]).select();
+                if (orderError) throw orderError;
                 
-                const insertedOrder = await resOrder.json();
-                tempPasswordData.order_id = insertedOrder[0].id;
+                tempPasswordData.order_id = orderData[0].id;
+                
+                const { error: credError } = await supabase.from('credentials').insert([tempPasswordData]);
+                if (credError) throw credError;
 
-                // 2. Simpan Password (POST)
-                const resCreds = await fetch(DB_URL + "/credentials", {
-                    method: "POST",
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(tempPasswordData)
-                });
-                
-                if(!resCreds.ok) {
-                    const errTxt = await resCreds.text();
-                    throw new Error("Gagal kredensial: " + errTxt);
-                }
-
-                // 3. Sukses
                 document.getElementById('qris-modal-area').classList.add('hidden');
                 document.getElementById('public-order-form').reset();
                 alert("Pesanan berhasil dikirim ke Admin!\nStatus: Menunggu Verifikasi Admin.");
                 fetchOrders();
             } catch (err) {
-                alert("Gagal mengirim pesanan. Silakan periksa koneksi internet Anda atau coba muat ulang halaman.");
+                alert("Gagal mengirim pesanan. Pastikan pengaturan Supabase RLS benar dan internet stabil.");
                 console.error(err);
             } finally {
                 btn.innerHTML = `✅ SAYA SUDAH BAYAR (KIRIM DATA KE ADMIN)`;
