@@ -10,7 +10,7 @@
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen p-4 md:p-6">
 
     <div id="login-container" class="max-w-md mx-auto mt-20 bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-2xl">
-        <h2 class="text-xl font-black text-red-400 mb-4 text-center">🔒 LOGIN ADMIN PANEL CLOUD</h2>
+        <h2 class="text-xl font-black text-red-400 mb-4 text-center">🔒 LOGIN ADMIN CLOUD</h2>
         <form id="login-form" onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
                 <label class="text-xs text-gray-400 block mb-1">PIN Admin</label>
@@ -38,7 +38,7 @@
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-4 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
                 <div class="flex-1">
                     <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Sinkronisasi Cloud Aktif</h3>
-                    <p class="text-xs text-gray-300">Semua order yang masuk dari perangkat pembeli akan otomatis muncul di sini (Tabel di-refresh otomatis tiap 10 detik). Password pembeli akan ditarik secara aman dari tabel rahasia Supabase.</p>
+                    <p class="text-xs text-gray-300">Semua order yang masuk dari perangkat pembeli akan otomatis muncul di sini (Tabel di-refresh otomatis tiap 10 detik). Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
                 </div>
                 <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
                     <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas)</p>
@@ -48,7 +48,7 @@
 
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm font-bold text-gray-200">Tabel Antrean Joki Cloud</h3>
-                <button onclick="fetchAdminData()" class="bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-1">🔄 Refresh Manual</button>
+                <button onclick="fetchAdminData()" class="bg-blue-800 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-bold shadow flex items-center gap-1">🔄 Refresh Data</button>
             </div>
 
             <div class="overflow-x-auto bg-gray-900 border border-gray-800 rounded-xl shadow">
@@ -86,7 +86,7 @@
                         <input type="text" id="pkg-nama" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
                     </div>
                     <div class="md:col-span-1">
-                        <label class="text-[10px] text-gray-400 uppercase">Teks Harga</label>
+                        <label class="text-[10px] text-gray-400 uppercase">Teks Harga Wibu</label>
                         <input type="text" id="pkg-wibu" required class="w-full p-2 bg-gray-800 border border-gray-700 rounded text-white text-xs">
                     </div>
                     <div class="md:col-span-1">
@@ -123,18 +123,30 @@
     </div>
 
     <script>
-        const PIN_ADMIN = "INSANSUKABUMI2003";
+        const PIN_ADMIN = "INSANSUKABUMI2003"; // GANTI PIN ANDA DI SINI JIKA MAU
         const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
         const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        let supabase = null;
+        try {
+            if (window.supabase) supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        } catch(e) {
+            console.error("Gagal init supabase admin");
+        }
         
         let jokiList = [];
         let credentialsDB = [];
         let packagesDB = [];
 
+        // DEFAULT PAKET CADANGAN
+        const DEFAULT_PACKAGES = [
+            { id: 1, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
+            { id: 2, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
+            { id: 3, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 }
+        ];
+
         window.addEventListener('DOMContentLoaded', () => {
-            const isLogged = sessionStorage.getItem('sae_admin_logged_in') === 'true';
-            if (isLogged) {
+            if (sessionStorage.getItem('sae_admin_logged_in') === 'true') {
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');
                 fetchAdminData();
@@ -145,6 +157,7 @@
         function handleAdminLogin(e) {
             e.preventDefault();
             const pinVal = document.getElementById('admin-pin-input').value;
+            // PERHATIKAN: PIN harus sama persis
             if (pinVal === PIN_ADMIN) {
                 sessionStorage.setItem('sae_admin_logged_in', 'true');
                 document.getElementById('login-container').classList.add('hidden');
@@ -176,16 +189,17 @@
             }
         }
 
-        // ==========================================
-        // MANAJEMEN ORDER
-        // ==========================================
         async function fetchAdminData() {
-            const { data: orders } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
-            const { data: creds } = await supabase.from('credentials').select('*');
-            
-            jokiList = orders || [];
-            credentialsDB = creds || [];
-            renderAdminTable();
+            if(!supabase) return;
+            try {
+                const { data: orders } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
+                const { data: creds } = await supabase.from('credentials').select('*');
+                jokiList = orders || [];
+                credentialsDB = creds || [];
+                renderAdminTable();
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         function renderAdminTable() {
@@ -276,12 +290,8 @@
 
         async function selesaikanDanWipe(id) {
             if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen dari Cloud (Auto-Wipe).")) {
-                // 1. Update status order jadi selesai
                 await supabase.from('orders').update({ status: 'selesai' }).eq('id', id);
-                
-                // 2. HAPUS PERMANEN password dari tabel rahasia credentials
                 await supabase.from('credentials').delete().eq('order_id', id);
-                
                 fetchAdminData();
             }
         }
@@ -295,10 +305,8 @@
 
         async function confirmUseCoupon(id, namaClient) {
             if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${namaClient}"?`)) {
-                // Cari 5 order milik orang ini yg belum diklaim
                 const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
                 const ids = targetOrders.map(j => j.id);
-                
                 if(ids.length > 0) {
                     await supabase.from('orders').update({ coupon_claimed: true }).in('id', ids);
                     fetchAdminData();
@@ -310,9 +318,23 @@
         // MANAJEMEN PAKET (CMS CLOUD)
         // ==========================================
         async function fetchPackages() {
-            const { data } = await supabase.from('packages').select('*').order('id', { ascending: true });
-            packagesDB = data || [];
-            renderPackagesTable();
+            if(!supabase) {
+                packagesDB = DEFAULT_PACKAGES;
+                renderPackagesTable();
+                return;
+            }
+            try {
+                const { data, error } = await supabase.from('packages').select('*').order('id', { ascending: true });
+                if (error || !data || data.length === 0) {
+                    packagesDB = DEFAULT_PACKAGES;
+                } else {
+                    packagesDB = data;
+                }
+                renderPackagesTable();
+            } catch (err) {
+                packagesDB = DEFAULT_PACKAGES;
+                renderPackagesTable();
+            }
         }
 
         function renderPackagesTable() {
@@ -382,7 +404,6 @@
             document.getElementById('pkg-form').reset();
         }
 
-        // Auto-refresh orders every 10 seconds for Admin
         setInterval(() => {
             if(sessionStorage.getItem('sae_admin_logged_in') === 'true') fetchAdminData();
         }, 10000);
