@@ -271,7 +271,7 @@
                 
                 actionButtons += `<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderPermanen(${joki.id})" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Database</button></div>`;
 
-                tbody.innerHTML += `
+                let rowHtml = `
                     <tr class="border-b border-gray-800 hover:bg-gray-900">
                         <td class="p-3 align-top text-center text-gray-500 font-mono">${joki.id}</td>
                         <td class="p-3 align-top leading-tight">${customerInfo}</td>
@@ -281,6 +281,7 @@
                         <td class="p-3 align-top text-center">${actionButtons}</td>
                     </tr>
                 `;
+                tbody.innerHTML += rowHtml;
             });
 
             document.getElementById('total-revenue').innerText = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
@@ -357,7 +358,7 @@
             }
 
             packagesDB.forEach(p => {
-                tbody.innerHTML += `
+                let rowHtml = `
                     <tr class="border-b border-gray-800 hover:bg-gray-900">
                         <td class="p-3 font-bold text-gray-300">${p.kategori}</td>
                         <td class="p-3 text-blue-300 font-semibold">${p.nama}</td>
@@ -370,6 +371,7 @@
                         </td>
                     </tr>
                 `;
+                tbody.innerHTML += rowHtml;
             });
         }
 
