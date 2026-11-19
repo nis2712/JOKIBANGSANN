@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Joki Sae Bangsann</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen p-4 md:p-6">
 
@@ -130,18 +129,15 @@
         const PIN_ADMIN = "INSANSUKABUMI2003";
         // =========================================================================
 
-        const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
-        const supabaseKey = 'sb_secret_wEK1sq601resH7zbU4ANCw_Vn9dTyv9';
+        const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
+        const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
         
-        let supabaseClient = null;
-        try {
-            if (window.supabase) {
-                // PENTING: Mencegah error "supabase has already been declared" yang terlihat di screenshot
-                supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-            }
-        } catch(e) {
-            console.error("Gagal init supabase admin");
-        }
+        const DB_HEADERS = {
+            "apikey": DB_KEY,
+            "Authorization": "Bearer " + DB_KEY,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        };
         
         let jokiList = [];
         let credentialsDB = [];
@@ -208,11 +204,12 @@
 
         async function fetchAdminData() {
             try {
-                if(!supabaseClient) throw new Error("No DB");
-                const { data: orders, error: errOrder } = await supabaseClient.from('orders').select('*').order('waktu_order', { ascending: true });
-                if (errOrder) throw errOrder;
+                const resOrders = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: DB_HEADERS });
+                if (!resOrders.ok) throw new Error("Gagal load orders dari database");
+                const orders = await resOrders.json();
                 
-                const { data: creds, error: credError } = await supabaseClient.from('credentials').select('*');
+                const resCreds = await fetch(DB_URL + "/credentials?select=*", { headers: DB_HEADERS });
+                const creds = resCreds.ok ? await resCreds.json() : [];
                 
                 jokiList = orders || [];
                 credentialsDB = creds || [];
@@ -289,7 +286,11 @@
         }
 
         async function updateStatus(id, newStatus) {
-            await supabaseClient.from('orders').update({ status: newStatus }).eq('id', id);
+            await fetch(DB_URL + "/orders?id=eq." + id, {
+                method: 'PATCH',
+                headers: DB_HEADERS,
+                body: JSON.stringify({ status: newStatus })
+            });
             fetchAdminData();
         }
 
@@ -298,11 +299,15 @@
                 const now = new Date();
                 const selesai = new Date(now.getTime() + (lamaJam * 60 * 60 * 1000));
                 
-                await supabaseClient.from('orders').update({ 
-                    status: 'joki_berjalan',
-                    waktu_mulai: now.toISOString(),
-                    waktu_selesai: selesai.toISOString()
-                }).eq('id', id);
+                await fetch(DB_URL + "/orders?id=eq." + id, {
+                    method: 'PATCH',
+                    headers: DB_HEADERS,
+                    body: JSON.stringify({ 
+                        status: 'joki_berjalan',
+                        waktu_mulai: now.toISOString(),
+                        waktu_selesai: selesai.toISOString()
+                    })
+                });
                 
                 fetchAdminData();
             }
@@ -310,15 +315,25 @@
 
         async function selesaikanDanWipe(id) {
             if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen dari Cloud (Auto-Wipe).")) {
-                await supabaseClient.from('orders').update({ status: 'selesai' }).eq('id', id);
-                await supabaseClient.from('credentials').delete().eq('order_id', id);
+                await fetch(DB_URL + "/orders?id=eq." + id, {
+                    method: 'PATCH',
+                    headers: DB_HEADERS,
+                    body: JSON.stringify({ status: 'selesai' })
+                });
+                await fetch(DB_URL + "/credentials?order_id=eq." + id, {
+                    method: 'DELETE',
+                    headers: DB_HEADERS
+                });
                 fetchAdminData();
             }
         }
 
         async function hapusOrderPermanen(id) {
             if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database.")) {
-                await supabaseClient.from('orders').delete().eq('id', id);
+                await fetch(DB_URL + "/orders?id=eq." + id, {
+                    method: 'DELETE',
+                    headers: DB_HEADERS
+                });
                 fetchAdminData();
             }
         }
@@ -326,9 +341,13 @@
         async function confirmUseCoupon(id, namaClient) {
             if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${namaClient}"?`)) {
                 const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
-                const ids = targetOrders.map(j => j.id);
+                const ids = targetOrders.map(j => j.id).join(',');
                 if(ids.length > 0) {
-                    await supabaseClient.from('orders').update({ coupon_claimed: true }).in('id', ids);
+                    await fetch(DB_URL + "/orders?id=in.(" + ids + ")", {
+                        method: 'PATCH',
+                        headers: DB_HEADERS,
+                        body: JSON.stringify({ coupon_claimed: true })
+                    });
                     fetchAdminData();
                 }
             }
@@ -339,10 +358,9 @@
         // ==========================================
         async function fetchPackages() {
             try {
-                if(!supabaseClient) throw new Error("No DB");
-                const { data, error } = await supabaseClient.from('packages').select('*').order('id', { ascending: true });
-                if (error || !data || data.length === 0) throw error;
-                packagesDB = data;
+                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: DB_HEADERS });
+                if(!res.ok) throw new Error("Gagal load tabel packages");
+                packagesDB = await res.json();
             } catch (err) {
                 packagesDB = DEFAULT_PACKAGES;
             }
@@ -387,9 +405,17 @@
             if(!newPkg.kategori || !newPkg.nama) return alert("Kategori dan Nama wajib diisi!");
 
             if (idInput) {
-                await supabaseClient.from('packages').update(newPkg).eq('id', idInput);
+                await fetch(DB_URL + "/packages?id=eq." + idInput, {
+                    method: 'PATCH',
+                    headers: DB_HEADERS,
+                    body: JSON.stringify(newPkg)
+                });
             } else {
-                await supabaseClient.from('packages').insert([newPkg]);
+                await fetch(DB_URL + "/packages", {
+                    method: 'POST',
+                    headers: DB_HEADERS,
+                    body: JSON.stringify(newPkg)
+                });
             }
 
             resetPkgForm();
@@ -411,7 +437,10 @@
 
         async function hapusPkg(id) {
             if(confirm("Yakin hapus paket joki ini dari Cloud Database?")) {
-                await supabaseClient.from('packages').delete().eq('id', id);
+                await fetch(DB_URL + "/packages?id=eq." + id, {
+                    method: 'DELETE',
+                    headers: DB_HEADERS
+                });
                 fetchPackages();
             }
         }
