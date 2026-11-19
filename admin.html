@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Joki Sae Bangsann</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen p-4 md:p-6">
 
     <div id="login-container" class="max-w-md mx-auto mt-20 bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-2xl">
         <h2 class="text-xl font-black text-red-400 mb-4 text-center">🔒 LOGIN ADMIN CLOUD</h2>
-        
-        <!-- PENGGUNAAN BUTTON BIASA AGAR TIDAK REFRESH SAAT ERROR -->
-        <div class="space-y-4">
+        <form id="login-form" onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
                 <label class="text-xs text-gray-400 block mb-1">PIN Admin</label>
                 <input type="password" id="admin-pin-input" placeholder="Masukkan PIN" class="w-full p-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-red-500">
             </div>
-            <button type="button" onclick="handleAdminLogin()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">MASUK SEBAGAI ADMIN</button>
-        </div>
+            <button type="button" onclick="handleAdminLogin(event)" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">MASUK SEBAGAI ADMIN</button>
+        </form>
     </div>
 
     <div id="admin-content" class="max-w-7xl mx-auto hidden">
@@ -39,7 +38,7 @@
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-4 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
                 <div class="flex-1">
                     <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Sinkronisasi Cloud Aktif</h3>
-                    <p class="text-xs text-gray-300">Semua order yang masuk dari perangkat pembeli otomatis muncul di sini. Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
+                    <p class="text-xs text-gray-300">Semua order yang masuk otomatis muncul di sini. Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
                 </div>
                 <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
                     <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas)</p>
@@ -74,7 +73,7 @@
         <!-- TAB PAKET -->
         <div id="tab-packages" class="hidden">
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-6 shadow">
-                <h3 class="text-sm font-bold text-yellow-400 mb-2">📦 Tambah / Edit Paket Joki Baru (Tersinkron Cloud)</h3>
+                <h3 class="text-sm font-bold text-yellow-400 mb-2">📦 Tambah / Edit Paket Joki Baru</h3>
                 
                 <form id="pkg-form" onsubmit="simpanPaket(event)" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                     <input type="hidden" id="pkg-id">
@@ -127,23 +126,37 @@
         // =========================================================================
         // 🔐 PENGATURAN PIN ADMIN 
         // =========================================================================
-        // Ganti angka 1234 di bawah ini dengan PIN rahasia baru Anda.
-        // PENTING: PASTIKAN TANDA KUTIP (" ") DI AWAL DAN AKHIR PIN TIDAK TERHAPUS!
         const PIN_ADMIN = "INSANSUKABUMI2003";
         // =========================================================================
 
-        const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
-        const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
-        const DB_HEADERS = {
-            "apikey": DB_KEY,
-            "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        };
+        const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
+        const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
+        
+        let supabase = null;
+        try {
+            if (window.supabase) supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        } catch(e) {
+            console.error("Gagal init supabase admin");
+        }
         
         let jokiList = [];
         let credentialsDB = [];
         let packagesDB = [];
+
+        // DEFAULT PAKET CADANGAN
+        const DEFAULT_PACKAGES = [
+            { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
+            { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
+            { id: 103, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 },
+            { id: 104, kategori: 'Alien Event', nama: '8 Jam (Bonus 2j)', harga_wibu: '60', harga_rp: 60000, jam_total: 10 },
+            { id: 105, kategori: 'Alien Event', nama: '24 Jam (Bonus 3j)', harga_wibu: '130', harga_rp: 130000, jam_total: 27 },
+            { id: 106, kategori: 'Ambil Telur', nama: '4 Jam', harga_wibu: '20', harga_rp: 20000, jam_total: 4 },
+            { id: 107, kategori: 'Ambil Telur', nama: '10 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 12 },
+            { id: 108, kategori: 'Ambil Telur', nama: '20 Jam (Bonus 5j)', harga_wibu: '100', harga_rp: 100000, jam_total: 25 },
+            { id: 109, kategori: 'Telur + Traidmil', nama: '4 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 4 },
+            { id: 110, kategori: 'Telur + Traidmil', nama: '8 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 10 },
+            { id: 111, kategori: 'Telur + Traidmil', nama: '16 Jam (Bonus 3j)', harga_wibu: '100', harga_rp: 100000, jam_total: 19 }
+        ];
 
         window.addEventListener('DOMContentLoaded', () => {
             if (sessionStorage.getItem('sae_admin_logged_in') === 'true') {
@@ -154,9 +167,9 @@
             }
         });
 
-        function handleAdminLogin() {
+        function handleAdminLogin(e) {
+            if(e) e.preventDefault();
             const pinVal = document.getElementById('admin-pin-input').value;
-            // Pengecekan tanpa sensitif tipe (==) agar jika Anda lupa tanda kutip di github tetap terbaca
             if (pinVal == PIN_ADMIN) {
                 sessionStorage.setItem('sae_admin_logged_in', 'true');
                 document.getElementById('login-container').classList.add('hidden');
@@ -190,17 +203,17 @@
 
         async function fetchAdminData() {
             try {
-                const resOrders = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
-                const resCreds = await fetch(DB_URL + "/credentials?select=*", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
+                const { data: orders, error: errOrder } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
+                if (errOrder) throw errOrder;
                 
-                if (!resOrders.ok) throw new Error("Gagal load orders dari database");
+                const { data: creds, error: credError } = await supabase.from('credentials').select('*');
                 
-                jokiList = await resOrders.json();
-                credentialsDB = resCreds.ok ? await resCreds.json() : [];
+                jokiList = orders || [];
+                credentialsDB = creds || [];
                 renderAdminTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Tabel belum terbuat atau RLS belum disetel.</td></tr>`;
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Pastikan SQL tabel Supabase dan RLS sudah disetel.</td></tr>`;
             }
         }
 
@@ -271,11 +284,7 @@
         }
 
         async function updateStatus(id, newStatus) {
-            await fetch(`${DB_URL}/orders?id=eq.${id}`, {
-                method: 'PATCH',
-                headers: DB_HEADERS,
-                body: JSON.stringify({ status: newStatus })
-            });
+            await supabase.from('orders').update({ status: newStatus }).eq('id', id);
             fetchAdminData();
         }
 
@@ -284,40 +293,27 @@
                 const now = new Date();
                 const selesai = new Date(now.getTime() + (lamaJam * 60 * 60 * 1000));
                 
-                await fetch(`${DB_URL}/orders?id=eq.${id}`, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify({ 
-                        status: 'joki_berjalan',
-                        waktu_mulai: now.toISOString(),
-                        waktu_selesai: selesai.toISOString()
-                    })
-                });
+                await supabase.from('orders').update({ 
+                    status: 'joki_berjalan',
+                    waktu_mulai: now.toISOString(),
+                    waktu_selesai: selesai.toISOString()
+                }).eq('id', id);
+                
                 fetchAdminData();
             }
         }
 
         async function selesaikanDanWipe(id) {
             if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen dari Cloud (Auto-Wipe).")) {
-                await fetch(`${DB_URL}/orders?id=eq.${id}`, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify({ status: 'selesai' })
-                });
-                await fetch(`${DB_URL}/credentials?order_id=eq.${id}`, {
-                    method: 'DELETE',
-                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
-                });
+                await supabase.from('orders').update({ status: 'selesai' }).eq('id', id);
+                await supabase.from('credentials').delete().eq('order_id', id);
                 fetchAdminData();
             }
         }
 
         async function hapusOrderPermanen(id) {
             if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database.")) {
-                await fetch(`${DB_URL}/orders?id=eq.${id}`, {
-                    method: 'DELETE',
-                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
-                });
+                await supabase.from('orders').delete().eq('id', id);
                 fetchAdminData();
             }
         }
@@ -325,13 +321,9 @@
         async function confirmUseCoupon(id, namaClient) {
             if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${namaClient}"?`)) {
                 const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
-                const ids = targetOrders.map(j => j.id).join(',');
+                const ids = targetOrders.map(j => j.id);
                 if(ids.length > 0) {
-                    await fetch(`${DB_URL}/orders?id=in.(${ids})`, {
-                        method: 'PATCH',
-                        headers: DB_HEADERS,
-                        body: JSON.stringify({ coupon_claimed: true })
-                    });
+                    await supabase.from('orders').update({ coupon_claimed: true }).in('id', ids);
                     fetchAdminData();
                 }
             }
@@ -342,11 +334,13 @@
         // ==========================================
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
-                if(res.ok) packagesDB = await res.json();
+                const { data, error } = await supabase.from('packages').select('*').order('id', { ascending: true });
+                if (error || !data || data.length === 0) throw error;
+                packagesDB = data;
                 renderPackagesTable();
             } catch (err) {
-                console.error(err);
+                packagesDB = DEFAULT_PACKAGES;
+                renderPackagesTable();
             }
         }
 
@@ -354,11 +348,6 @@
             const tbody = document.getElementById('pkg-table-body');
             tbody.innerHTML = '';
             
-            if (packagesDB.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Jika Anda menekan Simpan tanpa mengisi database, paket Default Publik akan digunakan.</td></tr>`;
-                return;
-            }
-
             packagesDB.forEach(p => {
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-800 hover:bg-gray-900">
@@ -377,7 +366,7 @@
         }
 
         async function simpanPaket(e) {
-            e.preventDefault();
+            if(e) e.preventDefault();
             const idInput = document.getElementById('pkg-id').value;
             const newPkg = {
                 kategori: document.getElementById('pkg-kategori').value.trim(),
@@ -390,17 +379,9 @@
             if(!newPkg.kategori || !newPkg.nama) return alert("Kategori dan Nama wajib diisi!");
 
             if (idInput) {
-                await fetch(`${DB_URL}/packages?id=eq.${idInput}`, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(newPkg)
-                });
+                await supabase.from('packages').update(newPkg).eq('id', idInput);
             } else {
-                await fetch(DB_URL + "/packages", {
-                    method: 'POST',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(newPkg)
-                });
+                await supabase.from('packages').insert([newPkg]);
             }
 
             resetPkgForm();
@@ -422,10 +403,7 @@
 
         async function hapusPkg(id) {
             if(confirm("Yakin hapus paket joki ini dari Cloud Database?")) {
-                await fetch(`${DB_URL}/packages?id=eq.${id}`, {
-                    method: 'DELETE',
-                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
-                });
+                await supabase.from('packages').delete().eq('id', id);
                 fetchPackages();
             }
         }
