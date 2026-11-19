@@ -76,7 +76,7 @@
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-6 shadow">
                 <h3 class="text-sm font-bold text-yellow-400 mb-2">📦 Tambah / Edit Paket Joki Baru (Tersinkron Cloud)</h3>
                 
-                <form id="pkg-form" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <form id="pkg-form" onsubmit="simpanPaket(event)" class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                     <input type="hidden" id="pkg-id">
                     <div class="md:col-span-1">
                         <label class="text-[10px] text-gray-400 uppercase">Kategori</label>
@@ -100,7 +100,7 @@
                     </div>
                     <div class="md:col-span-5 flex justify-end gap-2 mt-2">
                         <button type="button" onclick="resetPkgForm()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-xs font-bold transition">Batal</button>
-                        <button type="button" onclick="simpanPaket()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded text-xs font-bold transition shadow">💾 Simpan Paket ke Cloud</button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded text-xs font-bold transition shadow">💾 Simpan Paket ke Cloud</button>
                     </div>
                 </form>
             </div>
@@ -137,7 +137,8 @@
         const DB_HEADERS = {
             "apikey": DB_KEY,
             "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
         };
         
         let jokiList = [];
@@ -155,6 +156,7 @@
 
         function handleAdminLogin() {
             const pinVal = document.getElementById('admin-pin-input').value;
+            // Pengecekan tanpa sensitif tipe (==) agar jika Anda lupa tanda kutip di github tetap terbaca
             if (pinVal == PIN_ADMIN) {
                 sessionStorage.setItem('sae_admin_logged_in', 'true');
                 document.getElementById('login-container').classList.add('hidden');
@@ -188,17 +190,17 @@
 
         async function fetchAdminData() {
             try {
-                const resOrders = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: DB_HEADERS });
-                const resCreds = await fetch(DB_URL + "/credentials?select=*", { headers: DB_HEADERS });
+                const resOrders = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
+                const resCreds = await fetch(DB_URL + "/credentials?select=*", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
                 
-                if (!resOrders.ok) throw new Error("Gagal load orders");
+                if (!resOrders.ok) throw new Error("Gagal load orders dari database");
                 
                 jokiList = await resOrders.json();
                 credentialsDB = resCreds.ok ? await resCreds.json() : [];
                 renderAdminTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Pastikan internet stabil dan RLS Supabase sudah dikonfigurasi.</td></tr>`;
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Tabel belum terbuat atau RLS belum disetel.</td></tr>`;
             }
         }
 
@@ -304,7 +306,7 @@
                 });
                 await fetch(`${DB_URL}/credentials?order_id=eq.${id}`, {
                     method: 'DELETE',
-                    headers: DB_HEADERS
+                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
                 });
                 fetchAdminData();
             }
@@ -314,7 +316,7 @@
             if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database.")) {
                 await fetch(`${DB_URL}/orders?id=eq.${id}`, {
                     method: 'DELETE',
-                    headers: DB_HEADERS
+                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
                 });
                 fetchAdminData();
             }
@@ -340,7 +342,7 @@
         // ==========================================
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: DB_HEADERS });
+                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
                 if(res.ok) packagesDB = await res.json();
                 renderPackagesTable();
             } catch (err) {
@@ -352,6 +354,11 @@
             const tbody = document.getElementById('pkg-table-body');
             tbody.innerHTML = '';
             
+            if (packagesDB.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Jika Anda menekan Simpan tanpa mengisi database, paket Default Publik akan digunakan.</td></tr>`;
+                return;
+            }
+
             packagesDB.forEach(p => {
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-800 hover:bg-gray-900">
@@ -369,7 +376,8 @@
             });
         }
 
-        async function simpanPaket() {
+        async function simpanPaket(e) {
+            e.preventDefault();
             const idInput = document.getElementById('pkg-id').value;
             const newPkg = {
                 kategori: document.getElementById('pkg-kategori').value.trim(),
@@ -397,6 +405,7 @@
 
             resetPkgForm();
             fetchPackages();
+            alert("Paket berhasil disimpan ke Cloud!");
         }
 
         function editPkg(id) {
@@ -415,7 +424,7 @@
             if(confirm("Yakin hapus paket joki ini dari Cloud Database?")) {
                 await fetch(`${DB_URL}/packages?id=eq.${id}`, {
                     method: 'DELETE',
-                    headers: DB_HEADERS
+                    headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY }
                 });
                 fetchPackages();
             }
