@@ -150,51 +150,64 @@
         // MENGGUNAKAN API FETCH NATIVE (SANGAT CEPAT DAN ANTI GAGAL)
         const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
         const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
+        
+        // Perbaikan Header API: Menggunakan huruf kecil 'apikey' sesuai standar PostgREST Supabase
         const DB_HEADERS = {
             "apikey": DB_KEY,
             "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
         };
         
         const TARGET_KUPON = 5;
 
-        // DEFAULT PAKET JIKA KONEKSI INTERNET PEMBELI BURUK
+        // KEMBALIKAN SEMUA DEFAULT PACKAGES (LENGKAP)
         const DEFAULT_PACKAGES = [
-            { id: 1, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
-            { id: 2, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
-            { id: 3, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 }
+            { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
+            { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
+            { id: 103, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 },
+            { id: 104, kategori: 'Alien Event', nama: '8 Jam (Bonus 2j)', harga_wibu: '60', harga_rp: 60000, jam_total: 10 },
+            { id: 105, kategori: 'Alien Event', nama: '24 Jam (Bonus 3j)', harga_wibu: '130', harga_rp: 130000, jam_total: 27 },
+            { id: 106, kategori: 'Ambil Telur', nama: '4 Jam', harga_wibu: '20', harga_rp: 20000, jam_total: 4 },
+            { id: 107, kategori: 'Ambil Telur', nama: '10 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 12 },
+            { id: 108, kategori: 'Ambil Telur', nama: '20 Jam (Bonus 5j)', harga_wibu: '100', harga_rp: 100000, jam_total: 25 },
+            { id: 109, kategori: 'Telur + Traidmil', nama: '4 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 4 },
+            { id: 110, kategori: 'Telur + Traidmil', nama: '8 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 10 },
+            { id: 111, kategori: 'Telur + Traidmil', nama: '16 Jam (Bonus 3j)', harga_wibu: '100', harga_rp: 100000, jam_total: 19 }
         ];
 
         let packagesDB = [];
         let jokiList = [];
 
-        // FUNGSI TARIK PAKET
+        // AMBIL PAKET
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: DB_HEADERS });
-                if (!res.ok) throw new Error("Gagal load");
+                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
+                if (!res.ok) throw new Error("Gagal load tabel packages");
                 const data = await res.json();
+                
+                // Jika tabel packages di Supabase ternyata kosong, gunakan bawaan skrip
                 packagesDB = (data && data.length > 0) ? data : DEFAULT_PACKAGES;
             } catch (err) {
-                console.error("Gagal sinkron, pakai data lokal", err);
+                console.warn("Menggunakan paket default lokal karena belum ada di DB.");
                 packagesDB = DEFAULT_PACKAGES;
             }
             renderDynamicPackages();
         }
 
-        // FUNGSI TARIK ORDER
+        // AMBIL ORDER
         async function fetchOrders() {
             try {
-                const res = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: DB_HEADERS });
-                if (!res.ok) throw new Error("Gagal load order");
+                const res = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: { "apikey": DB_KEY, "Authorization": "Bearer " + DB_KEY } });
+                if (!res.ok) throw new Error("Gagal load tabel orders");
                 jokiList = await res.json();
             } catch (err) {
-                console.error("Gagal sinkron order", err);
+                console.warn("Gagal sinkron order (kemungkinan tabel masih kosong atau RLS memblokir).");
+                jokiList = [];
             }
             renderJokiTable();
         }
 
-        // RENDER PAKET KE HTML
         function renderDynamicPackages() {
             const bannerContainer = document.getElementById('price-list-cards');
             const selectContainer = document.getElementById('joki-jenis');
@@ -227,11 +240,14 @@
                 optGroup.label = kategori;
                 
                 pkgs.forEach(p => {
-                    cardHtml += `<li>• ${p.nama} ➔ <b class="text-yellow-400">${p.harga_wibu} wibu</b></li>`;
+                    // Penyesuaian nama field JSON (jika dari Supabase pakai underscore, jika dari lokal pakai underscore juga karena DEFAULT_PACKAGES sudah disesuaikan)
+                    const p_nama = p.nama || p.paket_teks;
+                    
+                    cardHtml += `<li>• ${p_nama} ➔ <b class="text-yellow-400">${p.harga_wibu} wibu</b></li>`;
                     
                     const opt = document.createElement('option');
-                    opt.value = `${p.kategori}|${p.nama} (${p.harga_wibu} wibu)|${p.jam_total}|${p.harga_rp}`;
-                    opt.textContent = `${p.kategori} - ${p.nama} (${p.harga_wibu} wibu) [${p.jam_total} Jam]`;
+                    opt.value = `${p.kategori}|${p_nama}|${p.jam_total}|${p.harga_rp}`;
+                    opt.textContent = `${p.kategori} - ${p_nama} (${p.harga_wibu} wibu) [${p.jam_total} Jam]`;
                     optGroup.appendChild(opt);
                 });
                 cardHtml += `</ul></div>`;
@@ -287,23 +303,32 @@
             btn.disabled = true;
 
             try {
-                // 1. Simpan Order
+                // 1. Simpan Order (POST)
                 const resOrder = await fetch(DB_URL + "/orders", {
                     method: "POST",
-                    headers: { ...DB_HEADERS, "Prefer": "return=representation" },
+                    headers: DB_HEADERS,
                     body: JSON.stringify(tempOrderData)
                 });
-                if (!resOrder.ok) throw new Error("Gagal order");
+                
+                if (!resOrder.ok) {
+                    const errTxt = await resOrder.text();
+                    throw new Error("Gagal order: " + errTxt);
+                }
                 
                 const insertedOrder = await resOrder.json();
                 tempPasswordData.order_id = insertedOrder[0].id;
 
-                // 2. Simpan Password
-                await fetch(DB_URL + "/credentials", {
+                // 2. Simpan Password (POST)
+                const resCreds = await fetch(DB_URL + "/credentials", {
                     method: "POST",
                     headers: DB_HEADERS,
                     body: JSON.stringify(tempPasswordData)
                 });
+                
+                if(!resCreds.ok) {
+                    const errTxt = await resCreds.text();
+                    throw new Error("Gagal kredensial: " + errTxt);
+                }
 
                 // 3. Sukses
                 document.getElementById('qris-modal-area').classList.add('hidden');
@@ -311,7 +336,7 @@
                 alert("Pesanan berhasil dikirim ke Admin!\nStatus: Menunggu Verifikasi Admin.");
                 fetchOrders();
             } catch (err) {
-                alert("Gagal mengirim pesanan. Silakan periksa koneksi internet Anda.");
+                alert("Gagal mengirim pesanan. Silakan periksa koneksi internet Anda atau coba muat ulang halaman.");
                 console.error(err);
             } finally {
                 btn.innerHTML = `✅ SAYA SUDAH BAYAR (KIRIM DATA KE ADMIN)`;
@@ -408,7 +433,6 @@
         setInterval(fetchOrders, 30000); 
         setInterval(renderJokiTable, 60000); 
         
-        // Mulai aplikasi
         fetchPackages();
         fetchOrders();
     </script>
