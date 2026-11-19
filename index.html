@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Joki Sae Bangsann - Roblox Joki & Price List</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .bonus-badge-glow { background: linear-gradient(90deg, #9333ea, #ec4899, #eab308); box-shadow: 0 0 14px rgba(236, 72, 153, 0.85); }
     </style>
@@ -29,7 +28,6 @@
             <p class="text-xs text-gray-300 mb-6">Pilih paket di bawah, isi form pesanan, scan QRIS otomatis, dan kumpulkan kupon loyalitasmu!</p>
             
             <div id="price-list-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                <!-- Kartu Paket dirender otomatis -->
                 <div class="text-center col-span-full py-4 text-yellow-400 font-bold animate-pulse">⚙️ Sedang Menyinkronkan Data dengan Server...</div>
             </div>
         </div>
@@ -88,6 +86,7 @@
             <p class="text-xs text-gray-300 mb-4">Nominal transfer dikunci otomatis dengan kode unik demi keamanan verifikasi pembayaran.</p>
             
             <div class="bg-white p-4 inline-block rounded-xl shadow-inner mb-4">
+                <!-- Pastikan file gambar qris.jpg ada di GitHub Anda -->
                 <img src="qris.jpeg" alt="QRIS DANA" class="w-44 h-44 mx-auto rounded-lg">
             </div>
 
@@ -149,20 +148,11 @@
     </div>
 
     <script>
-        // MENGGUNAKAN API FETCH NATIVE LALU MEM-BYPASS MASALAH CORS DENGAN JSON
-        const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
-        const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
-        
-        const DB_HEADERS = {
-            "apikey": DB_KEY,
-            "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        };
-        
+        // MENGGUNAKAN API GOOGLE SHEETS
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw1e1W9mz2eOCtkGgg43Hl1bFGBHR_6j5V-1pA1DWrZYoO9V6i5u2U6CAVl-4kSqaKp3Q/exec';
         const TARGET_KUPON = 5;
 
-        // DEFAULT PAKET LENGKAP JIKA DB KOSONG (ANTI-GAGAL)
+        // DEFAULT PAKET LENGKAP (ANTI-GAGAL)
         const DEFAULT_PACKAGES = [
             { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
             { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
@@ -182,12 +172,11 @@
 
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: DB_HEADERS });
-                if (!res.ok) throw new Error("Gagal load tabel packages");
+                const res = await fetch(SCRIPT_URL + "?action=get_packages");
                 const data = await res.json();
                 packagesDB = (data && data.length > 0) ? data : DEFAULT_PACKAGES;
             } catch (err) {
-                console.warn("Menggunakan paket default lokal karena belum ada di DB.");
+                console.warn("Menggunakan paket default lokal.");
                 packagesDB = DEFAULT_PACKAGES;
             }
             renderDynamicPackages();
@@ -195,11 +184,10 @@
 
         async function fetchOrders() {
             try {
-                const res = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: DB_HEADERS });
-                if (!res.ok) throw new Error("Gagal load tabel orders");
+                const res = await fetch(SCRIPT_URL + "?action=get_orders");
                 jokiList = await res.json();
             } catch (err) {
-                console.warn("Gagal sinkron order (kemungkinan tabel masih kosong atau RLS memblokir).");
+                console.warn("Gagal load dari server, tidak masalah.");
             }
             renderJokiTable();
         }
@@ -235,9 +223,7 @@
                 
                 pkgs.forEach(p => {
                     const p_nama = p.nama || p.paket_teks;
-                    
                     cardHtml += '<li>• ' + p_nama + ' ➔ <b class="text-yellow-400">' + p.harga_wibu + ' wibu</b></li>';
-                    
                     const opt = document.createElement('option');
                     opt.value = p.kategori + '|' + p_nama + '|' + p.jam_total + '|' + p.harga_rp;
                     opt.textContent = p.kategori + ' - ' + p_nama + ' (' + p.harga_wibu + ' wibu) [' + p.jam_total + ' Jam]';
@@ -292,45 +278,43 @@
             if (!tempOrderData || !tempPasswordData) return;
 
             const btn = document.getElementById('btn-konfirmasi-bayar');
-            btn.innerHTML = '⏳ Mengirim Data ke Server...';
+            btn.innerHTML = '⏳ Mengirim Data ke Spreadsheet...';
             btn.disabled = true;
 
             try {
-                // 1. Simpan Order
-                const resOrder = await fetch(DB_URL + "/orders", {
-                    method: "POST",
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(tempOrderData)
+                // Post Data ke Google Sheets
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" }, // Hindari CORS Options
+                    body: JSON.stringify({
+                        action: 'insert_order',
+                        order: tempOrderData,
+                        cred: tempPasswordData
+                    })
                 });
                 
-                if (!resOrder.ok) {
-                    const errTxt = await resOrder.text();
-                    throw new Error(errTxt);
-                }
+                const responseData = await res.json();
                 
-                const insertedOrder = await resOrder.json();
-                tempPasswordData.order_id = insertedOrder[0].id;
-
-                // 2. Simpan Password
-                const resCreds = await fetch(DB_URL + "/credentials", {
-                    method: "POST",
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(tempPasswordData)
-                });
-                
-                if(!resCreds.ok) {
-                    const errTxt = await resCreds.text();
-                    throw new Error(errTxt);
+                if (responseData.status !== 'success') {
+                    throw new Error(responseData.message || "Server Google Error");
                 }
 
-                // 3. Sukses
+                const normName = tempOrderData.nama.toLowerCase();
+                const activeCount = jokiList.filter(j => (j.nama || '').trim().toLowerCase() === normName && !j.coupon_claimed).length + 1;
+
+                if (activeCount >= TARGET_KUPON && activeCount % TARGET_KUPON === 0) {
+                    const banner = document.getElementById('bonus-notification-banner');
+                    document.getElementById('bonus-notif-title').innerText = '🎉 SELAMAT! "' + tempOrderData.nama.toUpperCase() + '" TEMBUS ' + activeCount + ' KUPON AKTIF!';
+                    banner.classList.remove('hidden');
+                }
+
                 document.getElementById('qris-modal-area').classList.add('hidden');
                 document.getElementById('public-order-form').reset();
-                alert("Pesanan berhasil dikirim ke Admin!\nStatus: Menunggu Verifikasi Admin.");
-                fetchOrders();
+                alert("Pesanan 100% Berhasil Dikirim ke Halaman Admin!\\nStatus: Menunggu Verifikasi Pembayaran.");
+                fetchOrders(); 
             } catch (err) {
-                alert("Gagal mengirim pesanan. Silakan periksa koneksi internet Anda atau coba muat ulang halaman.");
-                console.error("Supabase Error Response:", err);
+                alert("Gagal mengirim pesanan. Silakan periksa koneksi internet Anda.");
+                console.error(err);
             } finally {
                 btn.innerHTML = '✅ SAYA SUDAH BAYAR (KIRIM DATA KE ADMIN)';
                 btn.disabled = false;
@@ -351,7 +335,7 @@
                 if (!key) return;
                 if (!displayNames[key]) displayNames[key] = j.nama.trim();
                 if (activeCounts[key] === undefined) activeCounts[key] = 0;
-                if (!j.coupon_claimed) activeCounts[key]++;
+                if (!j.coupon_claimed && (j.coupon_claimed !== "TRUE" && j.coupon_claimed !== true)) activeCounts[key]++;
             });
 
             if (jokiList.length === 0) {
@@ -367,7 +351,9 @@
                 
                 displayedNo++;
                 const actCount = activeCounts[(joki.nama||'').trim().toLowerCase()] || 0;
-                const isBonusUnlocked = !joki.coupon_claimed && actCount >= TARGET_KUPON;
+                
+                let isKlaim = (joki.coupon_claimed === true || joki.coupon_claimed === "TRUE");
+                const isBonusUnlocked = !isKlaim && actCount >= TARGET_KUPON;
                 
                 let statusHtml = '';
                 let estimasiSelesaiHtml = '-';
@@ -389,7 +375,7 @@
                     sisaWaktuHtml = '<span class="text-gray-500 font-bold">Done</span>';
                 }
 
-                let couponBadgeHtml = joki.coupon_claimed 
+                let couponBadgeHtml = isKlaim 
                     ? '<span class="bg-gray-700/80 border border-gray-500 text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-full">✅ Kupon Terpakai</span>'
                     : (isBonusUnlocked ? '<span class="bonus-badge-glow text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">🎁 BONUS 4-5 JAM!</span>' : '<span class="bg-purple-900/50 border border-purple-500/40 text-purple-200 text-[10px] font-semibold px-2 py-0.5 rounded-full">🎟️ Kupon</span>');
 
