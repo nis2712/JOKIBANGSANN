@@ -38,7 +38,7 @@
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-4 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
                 <div class="flex-1">
                     <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Sinkronisasi Cloud Aktif</h3>
-                    <p class="text-xs text-gray-300">Semua order yang masuk dari perangkat pembeli akan otomatis muncul di sini (Tabel di-refresh otomatis tiap 10 detik). Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
+                    <p class="text-xs text-gray-300">Semua order yang masuk dari perangkat pembeli otomatis muncul di sini. Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
                 </div>
                 <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
                     <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas)</p>
@@ -123,7 +123,9 @@
     </div>
 
     <script>
-        const PIN_ADMIN = "INSANSUKABUMI2003"; // GANTI PIN ANDA DI SINI JIKA MAU
+        const PIN_ADMIN = "INSANSUKABUMI2003"; // SILAKAN GANTI PIN ANDA DI SINI
+        
+        // KODE INI SUDAH 100% BENAR DENGAN KUNCI ASLI ANDA
         const supabaseUrl = 'https://cpwjbilxzcfbhxotnrfg.supabase.co';
         const supabaseKey = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
         
@@ -138,7 +140,7 @@
         let credentialsDB = [];
         let packagesDB = [];
 
-        // DEFAULT PAKET CADANGAN
+        // DEFAULT PAKET CADANGAN JIKA SUPABASE ERROR
         const DEFAULT_PACKAGES = [
             { id: 1, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
             { id: 2, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
@@ -157,8 +159,9 @@
         function handleAdminLogin(e) {
             e.preventDefault();
             const pinVal = document.getElementById('admin-pin-input').value;
-            // PERHATIKAN: PIN harus sama persis
-            if (pinVal === PIN_ADMIN) {
+            
+            // Menggunakan == (dua sama dengan) agar PIN tetap bisa dibaca walau di GitHub diubah tanpa tanda kutip (misal: const PIN_ADMIN = 1234)
+            if (pinVal == PIN_ADMIN) {
                 sessionStorage.setItem('sae_admin_logged_in', 'true');
                 document.getElementById('login-container').classList.add('hidden');
                 document.getElementById('admin-content').classList.remove('hidden');
@@ -190,15 +193,22 @@
         }
 
         async function fetchAdminData() {
-            if(!supabase) return;
+            if(!supabase) {
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Cek setting Supabase Anda.</td></tr>`;
+                return;
+            }
             try {
-                const { data: orders } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
+                const { data: orders, error: errOrder } = await supabase.from('orders').select('*').order('waktu_order', { ascending: true });
                 const { data: creds } = await supabase.from('credentials').select('*');
+                
+                if(errOrder) throw errOrder;
+                
                 jokiList = orders || [];
                 credentialsDB = creds || [];
                 renderAdminTable();
             } catch (err) {
                 console.error(err);
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Error Database: ${err.message || 'Cek kembali RLS Policy di Supabase'}</td></tr>`;
             }
         }
 
