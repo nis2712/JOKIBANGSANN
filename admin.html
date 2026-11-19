@@ -216,7 +216,7 @@
                 renderAdminTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('admin-table-body').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Pastikan tabel Supabase terbuat dan RLS disetel.</td></tr>';
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Pastikan tabel Supabase terbuat dan RLS disetel.</td></tr>`;
             }
         }
 
@@ -226,7 +226,7 @@
             let totalRevenue = 0;
 
             if (jokiList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Belum ada order joki masuk.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Belum ada order joki masuk.</td></tr>`;
                 document.getElementById('total-revenue').innerText = "Rp 0";
                 return;
             }
@@ -240,49 +240,50 @@
                 let kuponButton = '';
                 const activeCoupon = jokiList.filter(j => j.nama.toLowerCase() === joki.nama.toLowerCase() && !j.coupon_claimed).length;
                 if (!joki.coupon_claimed && activeCoupon >= 5) {
-                    kuponButton = '<br><button onclick="confirmUseCoupon(' + joki.id + ', \'' + joki.nama + '\')" class="mt-1 bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded text-[10px] shadow">✅ Klaim Bonus Kupon</button>';
+                    kuponButton = `<br><button onclick="confirmUseCoupon(${joki.id}, '${joki.nama}')" class="mt-1 bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded text-[10px] shadow">✅ Klaim Bonus Kupon</button>`;
                 } else if (joki.coupon_claimed) {
-                    kuponButton = '<br><span class="text-[10px] text-gray-500">Kupon Terklaim</span>';
+                    kuponButton = `<br><span class="text-[10px] text-gray-500">Kupon Terklaim</span>`;
                 }
 
-                const customerInfo = '<b>' + joki.nama + '</b><br><span class="text-[10px] text-gray-400">Order: ' + dateOrder + '</span><br><span class="text-[10px] text-green-400 font-bold">Bayar: Rp ' + joki.harga.toLocaleString('id-ID') + '</span>' + kuponButton;
-                const paketInfo = '<span class="bg-gray-800 border border-gray-600 px-2 py-0.5 rounded text-[10px] font-bold text-gray-200">' + joki.kategori + '</span><br><span class="text-[11px] font-semibold text-blue-300 mt-1 inline-block">' + joki.paket_teks + '</span><br><span class="text-[10px] text-gray-400 mt-1 inline-block">Catatan: <i class="text-white">' + (joki.catatan || '-') + '</i></span>';
+                const customerInfo = `<b>${joki.nama}</b><br><span class="text-[10px] text-gray-400">Order: ${dateOrder}</span><br><span class="text-[10px] text-green-400 font-bold">Bayar: Rp ${joki.harga.toLocaleString('id-ID')}</span>${kuponButton}`;
+                const paketInfo = `<span class="bg-gray-800 border border-gray-600 px-2 py-0.5 rounded text-[10px] font-bold text-gray-200">${joki.kategori}</span><br><span class="text-[11px] font-semibold text-blue-300 mt-1 inline-block">${joki.paket_teks}</span><br><span class="text-[10px] text-gray-400 mt-1 inline-block">Catatan: <i class="text-white">${joki.catatan || '-'}</i></span>`;
 
                 const credentialContent = (!cred)
-                    ? '<span class="text-gray-500 italic">🔒 Data Telah Dihapus (Auto-Wiped)</span>'
-                    : '<b>User:</b> ' + cred.username_roblox + ' <br><b>Pass/Code:</b> <span class="bg-gray-800 px-1.5 py-0.5 rounded text-yellow-300 select-all">' + cred.password_roblox + '</span>';
+                    ? `<span class="text-gray-500 italic">🔒 Data Telah Dihapus (Auto-Wiped)</span>`
+                    : `<b>User:</b> ${cred.username_roblox} <br><b>Pass/Code:</b> <span class="bg-gray-800 px-1.5 py-0.5 rounded text-yellow-300 select-all">${cred.password_roblox}</span>`;
 
                 let statusBadge = '';
                 let actionButtons = '';
 
                 if (joki.status === 'pending_pembayaran') {
-                    statusBadge = '<span class="bg-yellow-900/80 text-yellow-400 border border-yellow-600 px-2 py-1 rounded text-xs font-bold">🕒 Pending Bayar</span>';
-                    actionButtons = '<button onclick="updateStatus(' + joki.id + ', \'lunas_cek_akun\')" class="w-full mb-1 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">✅ Set Lunas (Cek Akun)</button>';
+                    statusBadge = `<span class="bg-yellow-900/80 text-yellow-400 border border-yellow-600 px-2 py-1 rounded text-xs font-bold">🕒 Pending Bayar</span>`;
+                    actionButtons = `<button onclick="updateStatus(${joki.id}, 'lunas_cek_akun')" class="w-full mb-1 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">✅ Set Lunas (Cek Akun)</button>`;
                 } else if (joki.status === 'lunas_cek_akun') {
-                    statusBadge = '<span class="bg-blue-900/80 text-blue-300 border border-blue-500 px-2 py-1 rounded text-xs font-bold">🔍 Lunas (Sedang Cek)</span>';
-                    actionButtons = '<button onclick="mulaiJokiTimer(' + joki.id + ', ' + joki.lama_jam + ')" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🚀 Mulai Joki (Start Timer)</button>';
+                    statusBadge = `<span class="bg-blue-900/80 text-blue-300 border border-blue-500 px-2 py-1 rounded text-xs font-bold">🔍 Lunas (Sedang Cek)</span>`;
+                    actionButtons = `<button onclick="mulaiJokiTimer(${joki.id}, ${joki.lama_jam})" class="w-full bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🚀 Mulai Joki (Start Timer)</button>`;
                 } else if (joki.status === 'joki_berjalan') {
-                    statusBadge = '<span class="bg-green-900/80 text-green-300 border border-green-500 px-2 py-1 rounded text-xs font-bold animate-pulse">🚀 Joki Berjalan</span>';
-                    actionButtons = '<button onclick="selesaikanDanWipe(' + joki.id + ')" class="w-full bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🏁 Selesai Joki & Wipe Pass</button>';
+                    statusBadge = `<span class="bg-green-900/80 text-green-300 border border-green-500 px-2 py-1 rounded text-xs font-bold animate-pulse">🚀 Joki Berjalan</span>`;
+                    actionButtons = `<button onclick="selesaikanDanWipe(${joki.id})" class="w-full bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded font-bold shadow text-[11px]">🏁 Selesai Joki & Wipe Pass</button>`;
                 } else if (joki.status === 'selesai') {
-                    statusBadge = '<span class="bg-gray-800 text-gray-400 border border-gray-600 px-2 py-1 rounded text-xs font-bold">✅ Selesai (Wiped)</span>';
-                    actionButtons = '<span class="text-[10px] text-gray-500">Selesai Permanen.</span>';
+                    statusBadge = `<span class="bg-gray-800 text-gray-400 border border-gray-600 px-2 py-1 rounded text-xs font-bold">✅ Selesai (Wiped)</span>`;
+                    actionButtons = `<span class="text-[10px] text-gray-500">Selesai Permanen.</span>`;
                 }
                 
-                actionButtons += '<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderPermanen(' + joki.id + ')" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Database</button></div>';
+                actionButtons += `<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderPermanen(${joki.id})" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Database</button></div>`;
 
-                let rowHtml = '<tr class="border-b border-gray-800 hover:bg-gray-900">';
-                rowHtml += '<td class="p-3 align-top text-center text-gray-500 font-mono">' + joki.id + '</td>';
-                rowHtml += '<td class="p-3 align-top leading-tight">' + customerInfo + '</td>';
-                rowHtml += '<td class="p-3 align-top leading-tight">' + paketInfo + '</td>';
-                rowHtml += '<td class="p-3 align-top leading-tight">' + credentialContent + '</td>';
-                rowHtml += '<td class="p-3 align-top text-center">' + statusBadge + '</td>';
-                rowHtml += '<td class="p-3 align-top text-center">' + actionButtons + '</td>';
-                rowHtml += '</tr>';
-                tbody.innerHTML += rowHtml;
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-800 hover:bg-gray-900">
+                        <td class="p-3 align-top text-center text-gray-500 font-mono">${joki.id}</td>
+                        <td class="p-3 align-top leading-tight">${customerInfo}</td>
+                        <td class="p-3 align-top leading-tight">${paketInfo}</td>
+                        <td class="p-3 align-top leading-tight">${credentialContent}</td>
+                        <td class="p-3 align-top text-center">${statusBadge}</td>
+                        <td class="p-3 align-top text-center">${actionButtons}</td>
+                    </tr>
+                `;
             });
 
-            document.getElementById('total-revenue').innerText = 'Rp ' + totalRevenue.toLocaleString('id-ID');
+            document.getElementById('total-revenue').innerText = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
         }
 
         async function updateStatus(id, newStatus) {
@@ -321,7 +322,7 @@
         }
 
         async function confirmUseCoupon(id, namaClient) {
-            if (confirm('Klaim bonus -5 Kupon untuk pelanggan "' + namaClient + '"?')) {
+            if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${namaClient}"?`)) {
                 const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
                 const ids = targetOrders.map(j => j.id);
                 if(ids.length > 0) {
@@ -351,27 +352,29 @@
             tbody.innerHTML = '';
             
             if (packagesDB.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Jika Anda menekan Simpan tanpa mengisi database, paket Default Publik akan digunakan.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Jika Anda menekan Simpan tanpa mengisi database, paket Default Publik akan digunakan.</td></tr>`;
                 return;
             }
 
             packagesDB.forEach(p => {
-                let rowHtml = '<tr class="border-b border-gray-800 hover:bg-gray-900">';
-                rowHtml += '<td class="p-3 font-bold text-gray-300">' + p.kategori + '</td>';
-                rowHtml += '<td class="p-3 text-blue-300 font-semibold">' + p.nama + '</td>';
-                rowHtml += '<td class="p-3 font-bold text-yellow-400">' + p.harga_wibu + ' Wibu</td>';
-                rowHtml += '<td class="p-3">Rp ' + p.harga_rp.toLocaleString('id-ID') + '</td>';
-                rowHtml += '<td class="p-3">' + p.jam_total + ' Jam</td>';
-                rowHtml += '<td class="p-3 text-center">';
-                rowHtml += '<button onclick="editPkg(' + p.id + ')" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️</button>';
-                rowHtml += '<button onclick="hapusPkg(' + p.id + ')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">🗑️</button>';
-                rowHtml += '</td></tr>';
-                tbody.innerHTML += rowHtml;
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-800 hover:bg-gray-900">
+                        <td class="p-3 font-bold text-gray-300">${p.kategori}</td>
+                        <td class="p-3 text-blue-300 font-semibold">${p.nama}</td>
+                        <td class="p-3 font-bold text-yellow-400">${p.harga_wibu} Wibu</td>
+                        <td class="p-3">Rp ${p.harga_rp.toLocaleString('id-ID')}</td>
+                        <td class="p-3">${p.jam_total} Jam</td>
+                        <td class="p-3 text-center">
+                            <button onclick="editPkg(${p.id})" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️</button>
+                            <button onclick="hapusPkg(${p.id})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">🗑️</button>
+                        </td>
+                    </tr>
+                `;
             });
         }
 
         async function simpanPaket(e) {
-            if(e) e.preventDefault();
+            e.preventDefault();
             const idInput = document.getElementById('pkg-id').value;
             const newPkg = {
                 kategori: document.getElementById('pkg-kategori').value.trim(),
