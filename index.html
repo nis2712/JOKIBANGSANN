@@ -151,6 +151,14 @@
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxO0E4MaCqfdUFjmwWwCcCBtLlip1D0CvzSWhWehNG7eZY2Fps69pZp104qQMWFG0LUMA/exec';
         const TARGET_KUPON = 5;
 
+        // FUNGSI KEAMANAN: Membunuh kode XSS dari Hacker
+        function sanitizeHTML(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
         // DEFAULT PAKET LENGKAP (ANTI-GAGAL)
         const DEFAULT_PACKAGES = [
             { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
@@ -202,8 +210,9 @@
             
             const grouped = {};
             packagesDB.forEach(p => {
-                if(!grouped[p.kategori]) grouped[p.kategori] = [];
-                grouped[p.kategori].push(p);
+                const amanKategori = sanitizeHTML(p.kategori);
+                if(!grouped[amanKategori]) grouped[amanKategori] = [];
+                grouped[amanKategori].push(p);
             });
             
             const colors = ['blue', 'green', 'amber', 'purple', 'pink', 'cyan'];
@@ -221,11 +230,13 @@
                 optGroup.label = kategori;
                 
                 pkgs.forEach(p => {
-                    const p_nama = p.nama || p.paket_teks;
-                    cardHtml += '<li>• ' + p_nama + ' ➔ <b class="text-yellow-400">' + p.harga_wibu + ' wibu</b></li>';
+                    const p_nama = sanitizeHTML(p.nama || p.paket_teks);
+                    const p_harga_wibu = sanitizeHTML(p.harga_wibu);
+                    
+                    cardHtml += '<li>• ' + p_nama + ' ➔ <b class="text-yellow-400">' + p_harga_wibu + ' wibu</b></li>';
                     const opt = document.createElement('option');
-                    opt.value = p.kategori + '|' + p_nama + '|' + p.jam_total + '|' + p.harga_rp;
-                    opt.textContent = p.kategori + ' - ' + p_nama + ' (' + p.harga_wibu + ' wibu) [' + p.jam_total + ' Jam]';
+                    opt.value = p.kategori + '|' + (p.nama || p.paket_teks) + '|' + p.jam_total + '|' + p.harga_rp;
+                    opt.textContent = kategori + ' - ' + p_nama + ' (' + p_harga_wibu + ' wibu) [' + p.jam_total + ' Jam]';
                     optGroup.appendChild(opt);
                 });
                 cardHtml += '</ul></div>';
@@ -246,11 +257,13 @@
         
         document.getElementById('public-order-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            const nama = document.getElementById('joki-nama').value.trim();
+            
+            // XSS Filter untuk Input Data
+            const nama = sanitizeHTML(document.getElementById('joki-nama').value.trim());
             const rawJenisVal = document.getElementById('joki-jenis').value;
-            const username = document.getElementById('joki-username').value;
-            const password = document.getElementById('joki-password').value;
-            const catatan = document.getElementById('joki-catatan').value;
+            const username = sanitizeHTML(document.getElementById('joki-username').value.trim());
+            const password = sanitizeHTML(document.getElementById('joki-password').value);
+            const catatan = sanitizeHTML(document.getElementById('joki-catatan').value.trim());
 
             if(!rawJenisVal) return alert("Harap pilih paket Joki terlebih dahulu!");
 
@@ -262,8 +275,8 @@
 
             tempOrderData = {
                 nama: nama,
-                kategori: parts[0],
-                paket_teks: parts[1],
+                kategori: sanitizeHTML(parts[0]),
+                paket_teks: sanitizeHTML(parts[1]),
                 lama_jam: parseInt(parts[2]),
                 catatan: catatan,
                 harga: totalBayar,
@@ -284,7 +297,7 @@
                 // Post Data ke Google Sheets
                 const res = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" }, // Hindari CORS Options
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: 'insert_order',
                         order: tempOrderData,
@@ -299,7 +312,7 @@
                 }
 
                 const normName = tempOrderData.nama.toLowerCase();
-                const activeCount = jokiList.filter(j => (j.nama || '').trim().toLowerCase() === normName && !j.coupon_claimed).length + 1;
+                const activeCount = jokiList.filter(j => (sanitizeHTML(j.nama) || '').trim().toLowerCase() === normName && !j.coupon_claimed).length + 1;
 
                 if (activeCount >= TARGET_KUPON && activeCount % TARGET_KUPON === 0) {
                     const banner = document.getElementById('bonus-notification-banner');
@@ -330,9 +343,9 @@
             const displayNames = {};
 
             jokiList.forEach(j => {
-                const key = (j.nama || '').trim().toLowerCase();
+                const key = (sanitizeHTML(j.nama) || '').trim().toLowerCase();
                 if (!key) return;
-                if (!displayNames[key]) displayNames[key] = j.nama.trim();
+                if (!displayNames[key]) displayNames[key] = sanitizeHTML(j.nama).trim();
                 if (activeCounts[key] === undefined) activeCounts[key] = 0;
                 if (!j.coupon_claimed && (j.coupon_claimed !== "TRUE" && j.coupon_claimed !== true)) activeCounts[key]++;
             });
@@ -346,10 +359,10 @@
             let displayedNo = 0;
             jokiList.forEach((joki) => {
                 const selectedFilter = document.getElementById('filter-jenis-joki').value;
-                if (selectedFilter !== 'ALL' && joki.kategori !== selectedFilter) return;
+                if (selectedFilter !== 'ALL' && sanitizeHTML(joki.kategori) !== selectedFilter) return;
                 
                 displayedNo++;
-                const actCount = activeCounts[(joki.nama||'').trim().toLowerCase()] || 0;
+                const actCount = activeCounts[(sanitizeHTML(joki.nama)||'').trim().toLowerCase()] || 0;
                 
                 let isKlaim = (joki.coupon_claimed === true || joki.coupon_claimed === "TRUE");
                 const isBonusUnlocked = !isKlaim && actCount >= TARGET_KUPON;
@@ -380,10 +393,13 @@
 
                 let rowClass = isBonusUnlocked ? "bg-purple-950/40 border-b border-pink-500/30" : "hover:bg-gray-900 border-b border-gray-800";
                 
+                const amanNama = sanitizeHTML(joki.nama);
+                const amanPaket = sanitizeHTML(joki.paket_teks);
+                
                 let rowHtml = '<tr class="' + rowClass + '">';
                 rowHtml += '<td class="p-3 font-bold text-gray-500">' + displayedNo + '</td>';
-                rowHtml += '<td class="p-3"><div class="flex items-center flex-wrap gap-2"><span class="font-bold text-blue-300">' + joki.nama + ' ' + (isBonusUnlocked ? '👑' : '') + '</span>' + couponBadgeHtml + '</div></td>';
-                rowHtml += '<td class="p-3"><span class="text-xs font-semibold px-2.5 py-1 rounded border bg-gray-800 text-gray-300">' + joki.paket_teks + '</span></td>';
+                rowHtml += '<td class="p-3"><div class="flex items-center flex-wrap gap-2"><span class="font-bold text-blue-300">' + amanNama + ' ' + (isBonusUnlocked ? '👑' : '') + '</span>' + couponBadgeHtml + '</div></td>';
+                rowHtml += '<td class="p-3"><span class="text-xs font-semibold px-2.5 py-1 rounded border bg-gray-800 text-gray-300">' + amanPaket + '</span></td>';
                 rowHtml += '<td class="p-3 font-bold">' + joki.lama_jam + ' Jam</td>';
                 rowHtml += '<td class="p-3">' + statusHtml + '</td>';
                 rowHtml += '<td class="p-3">' + estimasiSelesaiHtml + '</td>';
