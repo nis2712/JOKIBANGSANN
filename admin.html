@@ -37,7 +37,7 @@
             <div class="bg-gray-900 border border-gray-800 p-5 rounded-xl mb-4 shadow flex flex-col md:flex-row gap-4 justify-between items-start">
                 <div class="flex-1">
                     <h3 class="text-sm font-bold text-yellow-400 mb-2">📋 Sinkronisasi Cloud Aktif</h3>
-                    <p class="text-xs text-gray-300">Semua order yang masuk otomatis muncul di sini. Password pembeli ditarik aman dari tabel rahasia Supabase.</p>
+                    <p class="text-xs text-gray-300">Semua order yang masuk otomatis ditarik dari Google Sheets rahasia Anda.</p>
                 </div>
                 <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 min-w-[200px] text-center">
                     <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Total Pendapatan (Lunas)</p>
@@ -63,7 +63,7 @@
                         </tr>
                     </thead>
                     <tbody id="admin-table-body">
-                        <tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Menarik data dari server database...</td></tr>
+                        <tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Menarik data dari server...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -125,37 +125,20 @@
         // =========================================================================
         // 🔐 PENGATURAN PIN ADMIN 
         // =========================================================================
-        // Ganti angka 1234 di bawah ini dengan PIN rahasia baru Anda.
         const PIN_ADMIN = "INSANSUKABUMI2003";
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw1e1W9mz2eOCtkGgg43Hl1bFGBHR_6j5V-1pA1DWrZYoO9V6i5u2U6CAVl-4kSqaKp3Q/exec';
+        const ADMIN_SECRET = 'SAE_ADMIN_KEY_999'; // Kunci wajib untuk request fungsi Admin
         // =========================================================================
 
-        const DB_URL = 'https://cpwjbilxzcfbhxotnrfg.supabase.co/rest/v1';
-        const DB_KEY = 'sb_publishable_3ZZoGFudfGRVBFBUEICv9w_fwbHxPsI';
-        
-        const DB_HEADERS = {
-            "apikey": DB_KEY,
-            "Authorization": "Bearer " + DB_KEY,
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        };
-        
         let jokiList = [];
         let credentialsDB = [];
         let packagesDB = [];
 
-        // DEFAULT PAKET CADANGAN
+        // DEFAULT PAKET CADANGAN (Jika SpreadSheet Kosong)
         const DEFAULT_PACKAGES = [
             { id: 101, kategori: 'Traidmil Only', nama: '8 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 8 },
             { id: 102, kategori: 'Traidmil Only', nama: '16 Jam (+3j Bonus)', harga_wibu: '50', harga_rp: 50000, jam_total: 19 },
-            { id: 103, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 },
-            { id: 104, kategori: 'Alien Event', nama: '8 Jam (Bonus 2j)', harga_wibu: '60', harga_rp: 60000, jam_total: 10 },
-            { id: 105, kategori: 'Alien Event', nama: '24 Jam (Bonus 3j)', harga_wibu: '130', harga_rp: 130000, jam_total: 27 },
-            { id: 106, kategori: 'Ambil Telur', nama: '4 Jam', harga_wibu: '20', harga_rp: 20000, jam_total: 4 },
-            { id: 107, kategori: 'Ambil Telur', nama: '10 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 12 },
-            { id: 108, kategori: 'Ambil Telur', nama: '20 Jam (Bonus 5j)', harga_wibu: '100', harga_rp: 100000, jam_total: 25 },
-            { id: 109, kategori: 'Telur + Traidmil', nama: '4 Jam', harga_wibu: '25', harga_rp: 25000, jam_total: 4 },
-            { id: 110, kategori: 'Telur + Traidmil', nama: '8 Jam (Bonus 2j)', harga_wibu: '50', harga_rp: 50000, jam_total: 10 },
-            { id: 111, kategori: 'Telur + Traidmil', nama: '16 Jam (Bonus 3j)', harga_wibu: '100', harga_rp: 100000, jam_total: 19 }
+            { id: 103, kategori: 'Alien Event', nama: '4 Jam', harga_wibu: '30', harga_rp: 30000, jam_total: 4 }
         ];
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -170,7 +153,6 @@
         function handleAdminLogin(e) {
             if(e) e.preventDefault();
             const pinVal = document.getElementById('admin-pin-input').value;
-            // Pengecekan ==
             if (pinVal == PIN_ADMIN) {
                 sessionStorage.setItem('sae_admin_logged_in', 'true');
                 document.getElementById('login-container').classList.add('hidden');
@@ -204,19 +186,21 @@
 
         async function fetchAdminData() {
             try {
-                const resOrders = await fetch(DB_URL + "/orders?select=*&order=waktu_order.asc", { headers: DB_HEADERS });
-                if (!resOrders.ok) throw new Error("Gagal load orders dari database");
+                // Tarik tabel Orders
+                const resOrders = await fetch(SCRIPT_URL + "?action=get_orders");
                 const orders = await resOrders.json();
                 
-                const resCreds = await fetch(DB_URL + "/credentials?select=*", { headers: DB_HEADERS });
-                const creds = resCreds.ok ? await resCreds.json() : [];
+                // Tarik tabel Passwords (Harus pakai Secret Key)
+                const resCreds = await fetch(SCRIPT_URL + "?action=get_creds&admin_secret=" + ADMIN_SECRET);
+                const credsData = await resCreds.json();
+                const creds = Array.isArray(credsData) ? credsData : [];
                 
                 jokiList = orders || [];
                 credentialsDB = creds || [];
                 renderAdminTable();
             } catch (err) {
                 console.error(err);
-                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Gagal. Pastikan tabel Supabase terbuat dan RLS disetel.</td></tr>`;
+                document.getElementById('admin-table-body').innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Koneksi Database Google Sheets Gagal. Pastikan URL benar.</td></tr>`;
             }
         }
 
@@ -232,20 +216,22 @@
             }
 
             jokiList.forEach((joki) => {
-                if (joki.status !== 'pending_pembayaran') totalRevenue += joki.harga || 0;
+                if (joki.status !== 'pending_pembayaran') totalRevenue += parseInt(joki.harga) || 0;
                 
                 const dateOrder = new Date(joki.waktu_order).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                const cred = credentialsDB.find(c => c.order_id === joki.id);
+                const cred = credentialsDB.find(c => c.order_id == joki.id);
+
+                let isKlaim = (joki.coupon_claimed === true || joki.coupon_claimed === "TRUE");
 
                 let kuponButton = '';
-                const activeCoupon = jokiList.filter(j => j.nama.toLowerCase() === joki.nama.toLowerCase() && !j.coupon_claimed).length;
-                if (!joki.coupon_claimed && activeCoupon >= 5) {
+                const activeCoupon = jokiList.filter(j => j.nama.toLowerCase() === joki.nama.toLowerCase() && (!j.coupon_claimed || j.coupon_claimed==="FALSE")).length;
+                if (!isKlaim && activeCoupon >= 5) {
                     kuponButton = `<br><button onclick="confirmUseCoupon(${joki.id}, '${joki.nama}')" class="mt-1 bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded text-[10px] shadow">✅ Klaim Bonus Kupon</button>`;
-                } else if (joki.coupon_claimed) {
+                } else if (isKlaim) {
                     kuponButton = `<br><span class="text-[10px] text-gray-500">Kupon Terklaim</span>`;
                 }
 
-                const customerInfo = `<b>${joki.nama}</b><br><span class="text-[10px] text-gray-400">Order: ${dateOrder}</span><br><span class="text-[10px] text-green-400 font-bold">Bayar: Rp ${joki.harga.toLocaleString('id-ID')}</span>${kuponButton}`;
+                const customerInfo = `<b>${joki.nama}</b><br><span class="text-[10px] text-gray-400">Order: ${dateOrder}</span><br><span class="text-[10px] text-green-400 font-bold">Bayar: Rp ${parseInt(joki.harga).toLocaleString('id-ID')}</span>${kuponButton}`;
                 const paketInfo = `<span class="bg-gray-800 border border-gray-600 px-2 py-0.5 rounded text-[10px] font-bold text-gray-200">${joki.kategori}</span><br><span class="text-[11px] font-semibold text-blue-300 mt-1 inline-block">${joki.paket_teks}</span><br><span class="text-[10px] text-gray-400 mt-1 inline-block">Catatan: <i class="text-white">${joki.catatan || '-'}</i></span>`;
 
                 const credentialContent = (!cred)
@@ -272,7 +258,7 @@
                 actionButtons += `<div class="mt-1 border-t border-gray-700 pt-1 text-right"><button onclick="hapusOrderPermanen(${joki.id})" class="text-red-400 hover:text-red-300 text-[10px] font-bold">🗑️ Hapus Database</button></div>`;
 
                 let rowHtml = '<tr class="border-b border-gray-800 hover:bg-gray-900">';
-                rowHtml += '<td class="p-3 align-top text-center text-gray-500 font-mono">' + joki.id + '</td>';
+                rowHtml += '<td class="p-3 align-top text-center text-gray-500 font-mono text-[10px]">' + joki.id + '</td>';
                 rowHtml += '<td class="p-3 align-top leading-tight">' + customerInfo + '</td>';
                 rowHtml += '<td class="p-3 align-top leading-tight">' + paketInfo + '</td>';
                 rowHtml += '<td class="p-3 align-top leading-tight">' + credentialContent + '</td>';
@@ -286,10 +272,10 @@
         }
 
         async function updateStatus(id, newStatus) {
-            await fetch(DB_URL + "/orders?id=eq." + id, {
-                method: 'PATCH',
-                headers: DB_HEADERS,
-                body: JSON.stringify({ status: newStatus })
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: 'update_status', admin_secret: ADMIN_SECRET, id: id, status: newStatus })
             });
             fetchAdminData();
         }
@@ -299,10 +285,13 @@
                 const now = new Date();
                 const selesai = new Date(now.getTime() + (lamaJam * 60 * 60 * 1000));
                 
-                await fetch(DB_URL + "/orders?id=eq." + id, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ 
+                        action: 'update_status', 
+                        admin_secret: ADMIN_SECRET,
+                        id: id,
                         status: 'joki_berjalan',
                         waktu_mulai: now.toISOString(),
                         waktu_selesai: selesai.toISOString()
@@ -315,24 +304,26 @@
 
         async function selesaikanDanWipe(id) {
             if (confirm("Tandai selesai? Password akun pelanggan akan dihapus permanen dari Cloud (Auto-Wipe).")) {
-                await fetch(DB_URL + "/orders?id=eq." + id, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify({ status: 'selesai' })
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: 'update_status', admin_secret: ADMIN_SECRET, id: id, status: 'selesai' })
                 });
-                await fetch(DB_URL + "/credentials?order_id=eq." + id, {
-                    method: 'DELETE',
-                    headers: DB_HEADERS
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: 'wipe_cred', admin_secret: ADMIN_SECRET, id: id })
                 });
                 fetchAdminData();
             }
         }
 
         async function hapusOrderPermanen(id) {
-            if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database.")) {
-                await fetch(DB_URL + "/orders?id=eq." + id, {
-                    method: 'DELETE',
-                    headers: DB_HEADERS
+            if (confirm("PERINGATAN! Order ini akan dihapus permanen dari database Google Sheets.")) {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: 'delete_order', admin_secret: ADMIN_SECRET, id: id })
                 });
                 fetchAdminData();
             }
@@ -340,16 +331,15 @@
 
         async function confirmUseCoupon(id, namaClient) {
             if (confirm(`Klaim bonus -5 Kupon untuk pelanggan "${namaClient}"?`)) {
-                const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && !j.coupon_claimed).slice(0,5);
-                const ids = targetOrders.map(j => j.id).join(',');
-                if(ids.length > 0) {
-                    await fetch(DB_URL + "/orders?id=in.(" + ids + ")", {
-                        method: 'PATCH',
-                        headers: DB_HEADERS,
-                        body: JSON.stringify({ coupon_claimed: true })
+                const targetOrders = jokiList.filter(j => j.nama.toLowerCase() === namaClient.toLowerCase() && (!j.coupon_claimed || j.coupon_claimed==="FALSE")).slice(0,5);
+                for (let order of targetOrders) {
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: 'update_status', admin_secret: ADMIN_SECRET, id: order.id, coupon_claimed: true })
                     });
-                    fetchAdminData();
                 }
+                fetchAdminData();
             }
         }
 
@@ -358,9 +348,9 @@
         // ==========================================
         async function fetchPackages() {
             try {
-                const res = await fetch(DB_URL + "/packages?select=*&order=id.asc", { headers: DB_HEADERS });
-                if(!res.ok) throw new Error("Gagal load tabel packages");
-                packagesDB = await res.json();
+                const res = await fetch(SCRIPT_URL + "?action=get_packages");
+                const data = await res.json();
+                packagesDB = (data && data.length > 0) ? data : DEFAULT_PACKAGES;
             } catch (err) {
                 packagesDB = DEFAULT_PACKAGES;
             }
@@ -372,7 +362,7 @@
             tbody.innerHTML = '';
             
             if (packagesDB.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Jika Anda menekan Simpan tanpa mengisi database, paket Default Publik akan digunakan.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-500 italic">Database paket kosong. Silakan tambah baru.</td></tr>`;
                 return;
             }
 
@@ -381,7 +371,7 @@
                 rowHtml += '<td class="p-3 font-bold text-gray-300">' + p.kategori + '</td>';
                 rowHtml += '<td class="p-3 text-blue-300 font-semibold">' + p.nama + '</td>';
                 rowHtml += '<td class="p-3 font-bold text-yellow-400">' + p.harga_wibu + ' Wibu</td>';
-                rowHtml += '<td class="p-3">Rp ' + p.harga_rp.toLocaleString('id-ID') + '</td>';
+                rowHtml += '<td class="p-3">Rp ' + parseInt(p.harga_rp).toLocaleString('id-ID') + '</td>';
                 rowHtml += '<td class="p-3">' + p.jam_total + ' Jam</td>';
                 rowHtml += '<td class="p-3 text-center">';
                 rowHtml += '<button onclick="editPkg(' + p.id + ')" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-[10px] font-bold mr-1">✏️</button>';
@@ -395,6 +385,7 @@
             e.preventDefault();
             const idInput = document.getElementById('pkg-id').value;
             const newPkg = {
+                id: idInput ? parseInt(idInput) : null,
                 kategori: document.getElementById('pkg-kategori').value.trim(),
                 nama: document.getElementById('pkg-nama').value.trim(),
                 harga_wibu: document.getElementById('pkg-wibu').value.trim(),
@@ -404,27 +395,19 @@
 
             if(!newPkg.kategori || !newPkg.nama) return alert("Kategori dan Nama wajib diisi!");
 
-            if (idInput) {
-                await fetch(DB_URL + "/packages?id=eq." + idInput, {
-                    method: 'PATCH',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(newPkg)
-                });
-            } else {
-                await fetch(DB_URL + "/packages", {
-                    method: 'POST',
-                    headers: DB_HEADERS,
-                    body: JSON.stringify(newPkg)
-                });
-            }
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: 'save_package', admin_secret: ADMIN_SECRET, pkg: newPkg })
+            });
 
             resetPkgForm();
             fetchPackages();
-            alert("Paket berhasil disimpan ke Cloud!");
+            alert("Paket berhasil disimpan ke Google Sheets!");
         }
 
         function editPkg(id) {
-            const p = packagesDB.find(pkg => pkg.id === id);
+            const p = packagesDB.find(pkg => pkg.id == id);
             if(p) {
                 document.getElementById('pkg-id').value = p.id;
                 document.getElementById('pkg-kategori').value = p.kategori;
@@ -437,9 +420,10 @@
 
         async function hapusPkg(id) {
             if(confirm("Yakin hapus paket joki ini dari Cloud Database?")) {
-                await fetch(DB_URL + "/packages?id=eq." + id, {
-                    method: 'DELETE',
-                    headers: DB_HEADERS
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: 'delete_package', admin_secret: ADMIN_SECRET, id: id })
                 });
                 fetchPackages();
             }
@@ -456,7 +440,7 @@
 
         setInterval(() => {
             if(sessionStorage.getItem('sae_admin_logged_in') === 'true') fetchAdminData();
-        }, 10000);
+        }, 15000);
     </script>
 </body>
 </html>
